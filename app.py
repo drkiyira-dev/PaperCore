@@ -63,11 +63,11 @@ except Exception as _e:
 # 引擎首次初始化较慢，故懒加载：仅在前几种文字层抽取全失败时才触发。
 _ocr_engine = None
 try:
-    import fitz  # PyMuPDF：把 PDF 页渲染成位图，喂给 OCR
+    import pypdfium2 as pdfium  # 把 PDF 页渲染成位图喂给 OCR（Apache/BSD 许可，替代 AGPL 的 PyMuPDF）
     from rapidocr_onnxruntime import RapidOCR as _RapidOCR
     OCR_OK = True
 except Exception as _e:
-    print(f"[OCR] RapidOCR/PyMuPDF 不可用，扫描件 OCR 兜底已跳过: {_e}")
+    print(f"[OCR] RapidOCR/pypdfium2 不可用，扫描件 OCR 兜底已跳过: {_e}")
     OCR_OK = False
 
 
@@ -80,40 +80,104 @@ def _get_ocr_engine():
     return _ocr_engine
 
 
-def ocr_pdf(file_path, dpi=200, max_pages=30):
+def _order_ocr_lines(result, page_width, min_score=0.5):
+    """
+    把 RapidOCR 的原始结果整理成「正确阅读顺序」的文本行。
+
+    RapidOCR 每条返回 [box, text, score]：box 是 4 个角点、score 是置信度。
+    旧实现只取 text、按识别顺序拼接——双栏论文会被读成「左一行右一行」的乱序，
+    低置信度噪声也混进正文。这里把 box 和 score 用起来：
+      1) 先按 score 过滤掉低置信度噪声；
+      2) 估计版面是单栏还是双栏，双栏则「先整列左、再整列右」；
+      3) 同列内按 y（行）→ x（行内左右）排序。
+    任何异常都回退到原始识别顺序，绝不让排序逻辑本身弄丢文本。
+    """
+    try:
+        items = []
+        for line in result:
+            box, text, score = line[0], line[1], line[2]
+            try:
+                score = float(score)
+            except (TypeError, ValueError):
+                score = 1.0
+            if not text or score < min_score:
+                continue
+            xs = [p[0] for p in box]
+            ys = [p[1] for p in box]
+            items.append({
+                "text": text,
+                "x_left": min(xs),
+                "x_center": (min(xs) + max(xs)) / 2.0,
+                "y_top": min(ys),
+                "height": max(ys) - min(ys),
+            })
+        if not items:
+            return []
+
+        # 估计是否双栏：看落在页面左半 / 右半的文本块各有多少。
+        mid = page_width / 2.0
+        left_cnt = sum(1 for it in items if it["x_center"] < mid)
+        right_cnt = len(items) - left_cnt
+        two_col = (left_cnt >= len(items) * 0.25 and right_cnt >= len(items) * 0.25)
+
+        # 行容差：用中位字高的一半，把同一行的碎块归进同一「行带」，避免抖动乱序。
+        heights = sorted(it["height"] for it in items if it["height"] > 0)
+        row_tol = (heights[len(heights) // 2] / 2.0) if heights else 8.0
+        if row_tol <= 0:
+            row_tol = 8.0
+
+        def sort_key(it):
+            col = 0 if (not two_col or it["x_center"] < mid) else 1
+            row_band = round(it["y_top"] / row_tol)
+            return (col, row_band, it["x_left"])
+
+        items.sort(key=sort_key)
+        return [it["text"] for it in items]
+    except Exception as e:
+        print(f"[OCR] 阅读顺序整理失败，回退原始顺序：{e}")
+        return [line[1] for line in result if len(line) > 1 and line[1]]
+
+
+def ocr_pdf(file_path, dpi=300, max_pages=30, min_score=0.5):
     """
     对扫描件 / 无文字层 PDF 做本地 OCR。
-    逐页用 PyMuPDF 渲染为位图 → RapidOCR 识别 → 拼接为纯文本。
+    逐页用 pypdfium2 渲染为位图 → RapidOCR 识别 → 按版面阅读顺序拼接为纯文本。
     全程本地 ONNX 推理，不出网；为控制时延，默认最多处理前 max_pages 页。
     """
     if not OCR_OK:
         return ""
     import numpy as np
-    from PIL import Image
-    import io
     engine = _get_ocr_engine()
     if engine is None:
         return ""
     parts = []
     try:
-        doc = fitz.open(file_path)
+        pdf = pdfium.PdfDocument(file_path)
     except Exception as e:
         print(f"[OCR] 打开 PDF 失败：{e}")
         return ""
-    for i, page in enumerate(doc):
-        if i >= max_pages:
-            print(f"[OCR] 已达页数上限 {max_pages}，停止")
-            break
-        try:
-            pix = page.get_pixmap(dpi=dpi)
-            img = np.array(Image.open(io.BytesIO(pix.tobytes("png"))))
-            result, _elapse = engine(img)
-            if result:
-                # RapidOCR 返回 [[box, text, score], ...]，按识别顺序取文本
-                parts.append("\n".join(line[1] for line in result))
-        except Exception as e:
-            print(f"[OCR] 第 {i+1} 页识别失败：{e}")
-    doc.close()
+    try:
+        n_pages = len(pdf)
+        for i in range(n_pages):
+            if i >= max_pages:
+                print(f"[OCR] 已达页数上限 {max_pages}，停止")
+                break
+            try:
+                page = pdf.get_page(i)
+                # scale = dpi/72（72 为 PDF 基准分辨率）。300 DPI 比旧的 200 更清晰，利于小字/公式。
+                bitmap = page.render(scale=dpi / 72.0)
+                img = np.array(bitmap.to_pil().convert("RGB"))  # 复制一份，随后即可释放渲染对象
+                bitmap.close()
+                page.close()
+                result, _elapse = engine(img)
+                if result:
+                    lines = _order_ocr_lines(result, img.shape[1], min_score=min_score)
+                    if lines:
+                        parts.append("\n".join(lines))
+            except Exception as e:
+                print(f"[OCR] 第 {i+1} 页识别失败：{e}")
+    finally:
+        pdf.close()
     text = "\n".join(parts)
     print(f"[OCR] 识别完成，共 {len(parts)} 页有文本，总长度 {len(text)}")
     return text
@@ -656,6 +720,61 @@ def _text_quality_ok(text, min_ratio=0.6):
     return (good / total) >= min_ratio
 
 
+def _page_text_reading_order(page):
+    """pdfplumber 单页文本抽取（直接用稳定的 extract_text）。
+
+    注（实测后的决定）：曾尝试用词级 bbox 做『双栏阅读顺序重建』来修两栏交错，但量过数据后
+    放弃——真正会落到 pdfplumber 兜底的 PDF，往往字间空格在字符级就已丢失，extract_words
+    把整行连成超宽 token，几何判栏因此失效（实测单栏/双栏的『跨中缝词占比』都在 ~19%，无法区分）；
+    而把单栏误判成双栏会『劈行重排』造成灾难性乱序。故不做几何重排，只保留安全的 _reflow_text
+    去连字符 / 并软换行。双栏交错列为兜底路径的已知局限——docling 主路径版面已理顺，不受影响。"""
+    return page.extract_text() or ""
+
+
+def _reflow_text(text):
+    """把『按版面折行』的文本里『句中软换行 + 连字符断词』规整成正常句子/段落。
+    只用于会折行的来源（pdfplumber/PyPDF2/OCR）；docling 输出已规整，不经过这里。
+    保守优先：句末标点结尾、或下一行像新段落/标题/编号/参考条目，则保留换行——拿不准不并。"""
+    if not text:
+        return text
+    import re
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    # 英文连字符断词： "wor-\nd" → "word"（连字符 + 换行 + 行首小写字母）
+    text = re.sub(r'([A-Za-z])-\n[ \t]*([a-z])', r'\1\2', text)
+
+    def ends_sentence(s):
+        s = s.rstrip()
+        return bool(s) and s[-1] in '。！？.!?；;:：'
+
+    def is_new_block(s):
+        s = s.strip()
+        return (not s) or bool(re.match(
+            r'^(\d+(\.\d+)*[\.\)、]?\s|[•·\-\*]\s|\[\d+\]|第[一二三四五六七八九十\d]+[章节]|'
+            r'(Abstract|Introduction|Related Work|Method|Conclusion|References|Acknowledg|'
+            r'图|表|Fig|Table|Algorithm)\b)', s))
+
+    out, buf = [], ''
+    for ln in text.split('\n'):
+        cur = ln.strip()
+        if not cur:
+            if buf:
+                out.append(buf)
+                buf = ''
+            continue
+        if not buf:
+            buf = cur
+        elif ends_sentence(buf) or is_new_block(ln):
+            out.append(buf)
+            buf = cur
+        else:
+            # 句中软换行 → 并接：中文衔接不加空格，其余加空格
+            joiner = '' if ('一' <= buf[-1] <= '鿿' and '一' <= cur[0] <= '鿿') else ' '
+            buf = buf + joiner + cur
+    if buf:
+        out.append(buf)
+    return '\n'.join(out)
+
+
 def extract_text(file_path):
     """
     使用多种方式提取PDF/文档文本，提高解析成功率
@@ -685,9 +804,10 @@ def extract_text(file_path):
         try:
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
-                    page_text = page.extract_text()
+                    page_text = _page_text_reading_order(page)
                     if page_text:
                         text += page_text + '\n'
+            text = _reflow_text(text)
             if text and text.strip():
                 print(f"[pdfplumber] 解析成功，文本长度：{len(text)}")
                 return text
@@ -703,6 +823,7 @@ def extract_text(file_path):
                     page_text = page.extract_text()
                     if page_text:
                         text += page_text + '\n'
+            text = _reflow_text(text)
             if text and text.strip():
                 print(f"[PyPDF2] 解析成功，文本长度：{len(text)}")
                 return text
@@ -715,7 +836,7 @@ def extract_text(file_path):
     if file_ext == 'pdf' and OCR_OK:
         try:
             print("[OCR] 文字层抽取为空，尝试本地 OCR 兜底...")
-            text = ocr_pdf(file_path)
+            text = _reflow_text(ocr_pdf(file_path))
             if text and text.strip():
                 print(f"[OCR] 兜底解析成功，文本长度：{len(text)}")
                 return text

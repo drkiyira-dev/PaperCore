@@ -254,6 +254,47 @@ RULES = [
 ]
 
 
+# -----------------------------------------------------------------------------
+# 命中片段的「整句」窗口：替代旧的 text[start-40:end+40]「按字符 ±40 硬切」。
+# 旧法两端常切在词/句中间，原文对照看着就像「截了一半」。这里把命中向两侧扩到
+# 最近的句末边界（中文标点/换行直接算；英文 . ! ? 需后接空白才算，避开 3.14、Fig.），
+# 并设字数上限防跑飞。文本本身的质量（docling 已理顺）不在这里管，这里只管「截得齐不齐」。
+# -----------------------------------------------------------------------------
+_SNIPPET_HARD = '。！？\n'   # 中文句末 + 换行：直接算边界
+_SNIPPET_SOFT = '.!?'       # 英文句末：需后接空白才算边界
+
+
+def _is_sentence_end(text, i):
+    """text[i-1] 是否构成一个句末边界（i 为「边界右侧」下标）。"""
+    if i <= 0:
+        return True
+    c = text[i - 1]
+    if c in _SNIPPET_HARD:
+        return True
+    if c in _SNIPPET_SOFT:
+        nxt = text[i] if i < len(text) else ' '
+        return nxt.isspace()
+    return False
+
+
+def _sentence_snippet(text, start, end, max_chars=240):
+    """把命中 [start, end) 向两侧扩到完整句子边界，得到「不截半」的原文片段。"""
+    L = start
+    lo = max(0, start - max_chars)
+    while L > lo and not _is_sentence_end(text, L):
+        L -= 1
+    R = end
+    hi = min(len(text), end + max_chars)
+    while R < hi and not _is_sentence_end(text, R):
+        R += 1
+    # 若因撞到字数上限而停（句子过长、非句末），回退到最近空白，避免英文在词中间收尾
+    if R < len(text) and not _is_sentence_end(text, R):
+        sp = text.rfind(' ', end, R)
+        if sp > end:
+            R = sp
+    return text[L:R].strip()
+
+
 def match_rules(text):
     matches = []
     tfidf = doc_tfidf_weights(text)
@@ -267,7 +308,7 @@ def match_rules(text):
                 "note": rule.get('note', ''),  # 人话说明：keep=这是什么核心 / review=为什么是水+建议
                 "start": m.start(),
                 "end": m.end(),
-                "snippet": text[max(0, m.start() - 40):min(len(text), m.end() + 40)],
+                "snippet": _sentence_snippet(text, m.start(), m.end()),
                 "salience": sal,
                 "salience_factors": factors,  # 四特征分解，供「为什么显著度高」展示
                 "action": rule.get('action', 'review'),

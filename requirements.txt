@@ -17,7 +17,7 @@ PyPDF2==3.0.1            # 兜底：兼容性最好
 # ===== 扫描件 OCR（推荐，缺失时自动跳过 OCR 兜底）=====
 # 没有这两个，扫描件 / 无文字层 PDF 将无法解析；普通文字版 PDF 不受影响。
 rapidocr_onnxruntime==1.2.3   # 本地 ONNX OCR，自带中英文模型，不出网
-pymupdf==1.27.2.3             # 把 PDF 页渲染成位图喂给 OCR
+pypdfium2==5.6.0              # 把 PDF 页渲染成位图喂给 OCR（Apache/BSD，替代 AGPL 的 PyMuPDF）
 
 # ===== 本地 T5 小模型（可选，体积大）=====
 # 仅当使用 LocalModelAI（engine='local'）时需要；不用可不装。

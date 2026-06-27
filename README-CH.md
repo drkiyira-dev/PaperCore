@@ -118,7 +118,7 @@ PaperCore 是一套**本地优先**的论文核心内容提取与结构化阅读
 |---|---|
 | Web | Flask（本机 127.0.0.1:5003） |
 | 文档解析 | docling → pdfplumber → PyPDF2 → RapidOCR 四级降级 |
-| 扫描件 OCR | RapidOCR（本地 ONNX，自带中英文模型）+ PyMuPDF 渲染 |
+| 扫描件 OCR | RapidOCR（本地 ONNX，自带中英文模型）+ pypdfium2 渲染 |
 | 规则引擎 | [`rules.py`](rules.py)（含领域先验） |
 | 显著度打分 | [`salience.py`](salience.py) |
 | 中文处理 | jieba / jieba.analyse |
@@ -133,7 +133,7 @@ PaperCore 是一套**本地优先**的论文核心内容提取与结构化阅读
 ```bash
 # 1. 安装依赖
 pip install flask python-dotenv docling pdfplumber PyPDF2 jieba requests json_repair
-#   扫描件 OCR（本地）：pip install rapidocr_onnxruntime pymupdf
+#   扫描件 OCR（本地）：pip install rapidocr_onnxruntime pypdfium2
 #   本地大模型（可选）：安装 Ollama 并 `ollama pull deepseek-r1:7b`
 
 # 2. 启动
@@ -202,15 +202,13 @@ PaperCore 由 4 名成员组成的团队完成：
 
 指导老师：严嘉捷、李业鹏。
 
-本项目建立在众多优秀开源项目之上，谨此致谢：Flask、docling、pdfplumber、pypdf、PyMuPDF、RapidOCR、jieba、Ollama、json-repair 等。
+本项目建立在众多优秀开源项目之上，谨此致谢：Flask、docling、pdfplumber、pypdf、pypdfium2、RapidOCR、jieba、Ollama、json-repair 等。
 
 ---
 
 ## 许可证
 
-本项目当前以 **MIT** 许可证发布（见 [LICENSE](LICENSE)）。Copyright (c) 2026 朱厚臻、江宇翱。
-
-> 注：核心依赖 PyMuPDF 为 AGPL-3.0 授权，与 MIT 存在兼容性问题。若未来正式公开发布，将重新评估许可证（改用 AGPL-3.0 或替换 PyMuPDF）。
+本项目以 **MIT** 许可证发布（见 [LICENSE](LICENSE)）。Copyright (c) 2026 朱厚臻、江宇翱。
 
 ---
 

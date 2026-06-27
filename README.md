@@ -118,7 +118,7 @@ Without any key, it defaults to the local path; with Ollama installed, a local L
 |---|---|
 | Web | Flask (local 127.0.0.1:5003) |
 | Document parsing | docling → pdfplumber → PyPDF2 → RapidOCR, four-tier fallback |
-| Scanned-doc OCR | RapidOCR (local ONNX, built-in CN/EN models) + PyMuPDF rendering |
+| Scanned-doc OCR | RapidOCR (local ONNX, built-in CN/EN models) + pypdfium2 rendering |
 | Rule engine | [`rules.py`](rules.py) (with domain priors) |
 | Salience scoring | [`salience.py`](salience.py) |
 | Chinese processing | jieba / jieba.analyse |
@@ -133,7 +133,7 @@ Without any key, it defaults to the local path; with Ollama installed, a local L
 ```bash
 # 1. Install dependencies
 pip install flask python-dotenv docling pdfplumber PyPDF2 jieba requests json_repair
-#   Scanned-doc OCR (local): pip install rapidocr_onnxruntime pymupdf
+#   Scanned-doc OCR (local): pip install rapidocr_onnxruntime pypdfium2
 #   Local LLM (optional): install Ollama and `ollama pull deepseek-r1:7b`
 
 # 2. Run
@@ -183,15 +183,13 @@ PaperCore was built by a four-member team:
 
 Advisors: Yan Jiajie, Li Yepeng.
 
-This project stands on the shoulders of many excellent open-source projects, with thanks to: Flask, docling, pdfplumber, pypdf, PyMuPDF, RapidOCR, jieba, Ollama, json-repair, and more.
+This project stands on the shoulders of many excellent open-source projects, with thanks to: Flask, docling, pdfplumber, pypdf, pypdfium2, RapidOCR, jieba, Ollama, json-repair, and more.
 
 ---
 
 ## License
 
-Currently released under the **MIT** license (see [LICENSE](LICENSE)). Copyright (c) 2026 Zhu Houzhen, Jiang Yu'ao.
-
-> Note: a core dependency, PyMuPDF, is licensed under AGPL-3.0, which has compatibility issues with MIT. If the project is formally released publicly in the future, the license will be re-evaluated (switch to AGPL-3.0 or replace PyMuPDF).
+Released under the **MIT** license (see [LICENSE](LICENSE)). Copyright (c) 2026 Zhu Houzhen, Jiang Yu'ao.
 
 ---
 
