@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分析历史 · PaperCore AI 学术论文分析系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=29">
     <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
 </head>
 <body>
@@ -88,6 +88,7 @@
 <script>
 const MODE_LABELS = { structured: '结构化理解', quick: '快速摘要', defense: '答辩汇报' };
 const ENGINE_LABELS = { v4pro: '✨ v4pro（高级）', deepseek: '☁ DeepSeek（云端）', ollama: '🖥 本地大模型' };
+const SCORE_LABELS = { teacher: '🌱 老师档', expert: '◆ 专家档', professor: '🔻 教授档' };
 
 function esc(s) {
     return String(s == null ? '' : s)
@@ -126,6 +127,9 @@ function buildCard(r) {
     const engine = r.ai_engine_used && ENGINE_LABELS[r.ai_engine_used]
         ? ENGINE_LABELS[r.ai_engine_used] : '本地规则 + 算法';
     const sal = (r.salience_avg != null) ? (Math.round(r.salience_avg * 100) + '%') : '—';
+    const scoreTag = (r.score_mode && SCORE_LABELS[r.score_mode])
+        ? SCORE_LABELS[r.score_mode] + (r.score_mode === 'teacher' && r.score_cap ? ' ≤' + r.score_cap : '')
+        : '';
     div.innerHTML = `
         <div class="history-card-main">
             <div class="history-card-title" title="${esc(r.filename)}">${esc(r.filename)}</div>
@@ -133,6 +137,7 @@ function buildCard(r) {
                 <span class="hc-time">${esc(r.time_str)}</span>
                 <span class="hc-badge">${esc(MODE_LABELS[r.analysis_mode] || r.analysis_mode)}</span>
                 <span class="hc-engine">${esc(engine)}</span>
+                ${scoreTag ? `<span class="hc-score hc-score-${esc(r.score_mode)}">${esc(scoreTag)}</span>` : ''}
             </div>
             <div class="history-card-stats">
                 <span><strong>${(r.text_length || 0).toLocaleString()}</strong> 字</span>

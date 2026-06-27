@@ -150,10 +150,11 @@ function setToggle(el, on, onText, offText) {
         } else if (q.can_use) {
             setToggle(v4El, true, `剩余 ${q.remaining}/${q.limit}`, '');
         } else {
-            const sec = Math.max(0, Math.floor((q.locked_until || 0) - Date.now() / 1000));
-            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+            const _d = new Date((q.locked_until || 0) * 1000);
+            const _h = _d.getHours(), _m = String(_d.getMinutes()).padStart(2, '0');
+            const _rt = `${(_h % 12) || 12}:${_m} ${_h < 12 ? 'AM' : 'PM'}`;
             setToggle(v4El, false, '', '已锁定');
-            if (v4Desc) v4Desc.textContent = `额度已用尽 · ${h} 小时 ${m} 分钟后重置（刷新无效）`;
+            if (v4Desc) v4Desc.textContent = `额度已用尽 · 预计 ${_rt} 恢复（精确到分钟）`;
         }
     } catch (e) {
         const err = document.getElementById('settingsError');

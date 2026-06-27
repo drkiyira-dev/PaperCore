@@ -36,6 +36,16 @@ function applyStatus(data) {
     applyV4ProStatus(data);
 }
 
+// 把「解锁时刻(epoch 秒)」格式化成绝对时间，如 "3:45 PM"（精确到分钟，AM/PM）
+function fmtRecoverTime(epochSec) {
+    const d = new Date(epochSec * 1000);
+    let h = d.getHours();
+    const m = String(d.getMinutes()).padStart(2, '0');
+    const ap = h < 12 ? 'AM' : 'PM';
+    h = h % 12; if (h === 0) h = 12;
+    return `${h}:${m} ${ap}`;
+}
+
 function applyV4ProStatus(data) {
     if (!data || !data.v4pro_available) return;
     const sec    = document.getElementById('v4proSection');
@@ -55,11 +65,9 @@ function applyV4ProStatus(data) {
         if (locked) input.checked = false;
     }
     if (locked && quota.locked_until) {
-        const secLeft = Math.max(0, Math.floor(quota.locked_until - Date.now() / 1000));
-        const h = Math.floor(secLeft / 3600);
-        const m = Math.floor((secLeft % 3600) / 60);
-        if (desc) desc.textContent = `今日额度已用尽 · ${h} 小时 ${m} 分钟后重置（刷新无效）`;
-        if (toggle) toggle.title = `配额耗尽，${h}h ${m}m 后解锁`;
+        const t = fmtRecoverTime(quota.locked_until);   // 绝对恢复时间（AM/PM，精确到分），不做倒计时
+        if (desc) desc.textContent = `今日额度已用尽 · 预计 ${t} 恢复`;
+        if (toggle) toggle.title = `配额耗尽，预计 ${t} 恢复`;
     } else if (desc) {
         desc.textContent = '资深评审视角，更深更长的结构化分析 · 5 小时内限用 5 次';
         if (toggle) toggle.title = '';
@@ -116,7 +124,13 @@ function syncTeacherCapRow() {
     if (teacherCapRow) teacherCapRow.style.display = (selectedScore === 'teacher') ? 'flex' : 'none';
 }
 if (teacherCapSlider && teacherCapValue) {
-    teacherCapSlider.addEventListener('input', () => { teacherCapValue.textContent = teacherCapSlider.value; });
+    const updateCap = () => {
+        teacherCapValue.textContent = teacherCapSlider.value;
+        const pct = (teacherCapSlider.value - 70) / 30 * 100;   // 70~100 映射 0~100% 填充
+        teacherCapSlider.style.setProperty('--cap-fill', pct + '%');
+    };
+    teacherCapSlider.addEventListener('input', updateCap);
+    updateCap();   // 初始化填充段
 }
 syncTeacherCapRow();   // 默认老师档 → 显示滑块
 document.querySelectorAll('#scoreSelector .mode-card').forEach(card => {

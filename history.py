@@ -164,6 +164,8 @@ def _summary_from(rec_id, ts, data):
         'keep_count': stats.get('keep_count', 0),
         'ai_engine_used': data.get('ai_engine_used'),
         'salience_avg': round(sum(sal) / len(sal), 3) if sal else None,
+        'score_mode': data.get('score_mode'),                       # 评分档：teacher/expert/professor（老记录可能为 None）
+        'score_cap': (data.get('quality_score') or {}).get('cap'),  # 该档总分上限（老师档体现滑块值）
     }
 
 

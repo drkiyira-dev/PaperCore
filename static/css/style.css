@@ -682,11 +682,51 @@ a { color: inherit; text-decoration: none; }
     background: rgba(var(--color-grass-rgb), 0.06);
 }
 .teacher-cap-label { font-size: 12px; color: var(--color-text); white-space: nowrap; }
-.teacher-cap-row input[type="range"] { flex: 1; accent-color: var(--color-grass); cursor: pointer; }
+/* 老师档滑块 · Apple 液态玻璃风（青草绿）：磨砂胶囊轨道 + 已选段填绿 + 高光玻璃滑块 + 拖动回弹缩放 */
+.teacher-cap-row input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 22px; margin: 0; background: transparent; cursor: pointer;
+}
+.teacher-cap-row input[type="range"]::-webkit-slider-runnable-track {
+    height: 10px; border-radius: 99px;
+    background: linear-gradient(to right,
+        var(--color-grass) var(--cap-fill, 50%),
+        rgba(var(--color-grass-rgb), 0.16) var(--cap-fill, 50%));
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10);
+}
+.teacher-cap-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; margin-top: -6px; border-radius: 50%;
+    background: radial-gradient(circle at 32% 28%,
+        rgba(255, 255, 255, 0.97), rgba(255, 255, 255, 0.55) 45%, rgba(var(--color-grass-rgb), 0.55) 100%);
+    border: 1.5px solid var(--color-grass);
+    box-shadow: 0 2px 6px rgba(var(--color-grass-rgb), 0.40), inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.16s;
+}
+.teacher-cap-row input[type="range"]:active::-webkit-slider-thumb {
+    transform: scale(1.28);
+    box-shadow: 0 4px 12px rgba(var(--color-grass-rgb), 0.55), inset 0 1px 3px rgba(255, 255, 255, 0.95);
+}
+.teacher-cap-row input[type="range"]::-moz-range-track { height: 10px; border-radius: 99px; background: rgba(var(--color-grass-rgb), 0.16); }
+.teacher-cap-row input[type="range"]::-moz-range-progress { height: 10px; border-radius: 99px; background: var(--color-grass); }
+.teacher-cap-row input[type="range"]::-moz-range-thumb {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--color-grass);
+    background: radial-gradient(circle at 32% 28%, #fff, rgba(var(--color-grass-rgb), 0.55));
+    box-shadow: 0 2px 6px rgba(var(--color-grass-rgb), 0.40);
+    transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.teacher-cap-row input[type="range"]:active::-moz-range-thumb { transform: scale(1.28); }
 .teacher-cap-value {
     font-size: 13px; font-weight: 700; color: var(--color-grass);
     min-width: 26px; text-align: right;
 }
+
+/* 分析历史 · 评分档徽章（按档配色，与工作台三卡一致）*/
+.hc-score { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; }
+.hc-score-teacher { background: rgba(var(--color-grass-rgb), 0.15); color: #4e8f31; }
+.hc-score-expert { background: var(--color-accent-light); color: var(--color-accent); }
+.hc-score-professor { background: rgba(var(--color-red-rgb), 0.12); color: var(--color-red); }
 
 /* === Start Button === */
 .btn-start {

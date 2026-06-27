@@ -437,9 +437,10 @@ SCORE_PROFILES = {
     },
     "professor": {
         "label": "教授", "cap": 65,
-        "innovation_kw": _INNOVATION_KW_PROFESSOR, "innovation_coef": 2.0,
-        "method_kw": _METHOD_KW_PROFESSOR, "method_coef": 1.1,
-        "data_expr": 8, "data_conc": 8, "data_cross": 5,
+        # 压低系数 + 数据上限：让扎实论文从挤在 59~65 摊到 ~50~65，有短板的(创新弱/数据少)掉得下去、拉开区分度
+        "innovation_kw": _INNOVATION_KW_PROFESSOR, "innovation_coef": 1.7,
+        "method_kw": _METHOD_KW_PROFESSOR, "method_coef": 1.0,
+        "data_expr": 7, "data_conc": 6, "data_cross": 4,
         "num_strict": True,  # 数据只认带单位/百分比/小数，裸整数不算量化指标
     },
 }
