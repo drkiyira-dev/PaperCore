@@ -2,7 +2,7 @@
 let selectedFile = null;
 let preloadedDoc = null;   // 「我的文档」带过来的已上传文件名（?doc=），与 selectedFile 互斥
 let selectedMode = 'quick';
-let selectedScore = 'temperate';   // 论文体检评分尺度：temperate（默认）/ strict
+let selectedScore = 'teacher';   // 论文体检评分尺度：teacher（默认）/ expert / professor
 let loadingTimer = null;
 let logTimer = null;
 
@@ -107,12 +107,24 @@ document.querySelectorAll('#modeSelector .mode-card').forEach(card => {
     });
 });
 
-// 评分尺度（温和/严格），与分析模式各管各的，按容器隔离选中态
+// 评分尺度（老师/专家/教授），与分析模式各管各的，按容器隔离选中态
+// 老师档专属「分数上限」滑块：仅老师档显示
+const teacherCapRow = document.getElementById('teacherCapRow');
+const teacherCapSlider = document.getElementById('teacherCapSlider');
+const teacherCapValue = document.getElementById('teacherCapValue');
+function syncTeacherCapRow() {
+    if (teacherCapRow) teacherCapRow.style.display = (selectedScore === 'teacher') ? 'flex' : 'none';
+}
+if (teacherCapSlider && teacherCapValue) {
+    teacherCapSlider.addEventListener('input', () => { teacherCapValue.textContent = teacherCapSlider.value; });
+}
+syncTeacherCapRow();   // 默认老师档 → 显示滑块
 document.querySelectorAll('#scoreSelector .mode-card').forEach(card => {
     card.addEventListener('click', () => {
         document.querySelectorAll('#scoreSelector .mode-card').forEach(c => c.classList.remove('active'));
         card.classList.add('active');
         selectedScore = card.dataset.score;
+        syncTeacherCapRow();
     });
 });
 
@@ -289,6 +301,7 @@ function startAnalysis() {
     const formData = new FormData();
     formData.append('analysis_mode', selectedMode);
     formData.append('score_mode', selectedScore);
+    if (selectedScore === 'teacher' && teacherCapSlider) formData.append('teacher_cap', teacherCapSlider.value);
     if (useV4Pro) formData.append('use_v4pro', '1');
     if (apiKey) formData.append('api_key', apiKey);
     if (useLocalAi) formData.append('use_local_ai', '1');

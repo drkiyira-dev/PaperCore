@@ -316,13 +316,14 @@ def extract_sections(text):
 
 
 # ==================== 四维评分档案：温和 / 严格两套，各自独立维护 ====================
-# 评分尺度由用户在分析时选择（score_mode）。两套词库刻意分开列、不是子集关系：
-#   温和档——词全、系数松，内容扎实就容易拿高分（鼓励作者、给作品打气）
-#   严格档——独立精选「强信号」词、系数低、数据更看重结论定量（审稿视角，分数普遍压在 55~72）
-# 以后两套可各自迭代：温和档加宽松信号词、严格档加「硬」信号词，互不影响。
-# 结构维度（章节识别）是客观的，两档共用、不分松紧。
+# 评分尺度由用户在分析时选择（score_mode）。三套词库刻意分开列、互不为子集关系：
+#   老师档——词全、系数松，内容扎实就容易拿高分（鼓励为主）；总分上限由前端滑块定（70~100，默认 85）
+#   专家档——去掉最泛的词、留实义信号，系数中等（同行视角，封顶 72）
+#   教授档——只认「强信号」硬词、系数最低、数据只认带单位/小数的定量（审稿视角，封顶 65）
+# 三档可各自迭代，互不影响。数据维度按「量化值个数」分级给分（不再“有数字就满分”，治虚高）。
+# 结构维度（章节识别）是客观的，三档共用、不分松紧；最终总分按各档上限裁剪。
 
-_INNOVATION_KW_TEMPERATE = [
+_INNOVATION_KW_TEACHER = [
     # 中文：提出/设计/贡献类
     "本文提出", "本文设计", "本文构建", "本文实现", "本文开发", "本研究提出",
     "提出了一种", "设计了一种", "首次", "本文首次", "创新", "创新性", "创造性",
@@ -340,7 +341,7 @@ _INNOVATION_KW_TEMPERATE = [
     "breakthrough", "our method",
 ]
 
-_METHOD_KW_TEMPERATE = [
+_METHOD_KW_TEACHER = [
     # 中文：流程/结构
     "步骤", "流程", "算法", "框架", "模型", "网络", "模块", "结构", "架构",
     "参数", "超参数", "训练", "优化", "损失", "损失函数", "函数", "公式",
@@ -364,8 +365,8 @@ _METHOD_KW_TEMPERATE = [
     "representation", "end-to-end",
 ]
 
-# 严格档·创新：只认「明确、可验证的强创新声明」，剔除 propose/present/novel 这类谁都写得出的泛词
-_INNOVATION_KW_STRICT = [
+# 教授档·创新：只认「明确、可验证的强创新声明」，剔除 propose/present/novel 这类谁都写得出的泛词
+_INNOVATION_KW_PROFESSOR = [
     "本文提出", "提出了一种", "本文首次", "首次提出", "首次实现", "国内外首次",
     "主要贡献", "核心贡献", "关键贡献", "核心创新", "关键创新", "创新点",
     "突破", "重大突破", "填补空白", "填补了空白", "显著优于", "大幅领先", "远超",
@@ -376,9 +377,9 @@ _INNOVATION_KW_STRICT = [
     "for the first time",
 ]
 
-# 严格档·方法：只认「方法完整性的实质标志」——算法/超参/数据集/消融/基线/复杂度/收敛等，
+# 教授档·方法：只认「方法完整性的实质标志」——算法/超参/数据集/消融/基线/复杂度/收敛等，
 # 剔除 model/network/layer/function/feature 这类任何技术论文都会出现的通用术语
-_METHOD_KW_STRICT = [
+_METHOD_KW_PROFESSOR = [
     "算法", "算法流程", "伪代码", "框架", "训练", "优化", "损失函数", "目标函数",
     "梯度", "学习率", "批大小", "超参数", "参数设置", "数据集", "消融", "消融实验",
     "基线", "对比实验", "评价指标", "准确率", "召回率", "精确率",
@@ -391,29 +392,60 @@ _METHOD_KW_STRICT = [
     "cross-validation", "experimental setup",
 ]
 
+# 专家档·创新（中档）：比老师收掉最泛的词（创造性/全新/独特…），比教授宽——保留 propose/novel 等中强信号
+_INNOVATION_KW_EXPERT = [
+    "本文提出", "本文设计", "本文构建", "提出了一种", "设计了一种", "首次", "本文首次",
+    "创新点", "主要贡献", "核心贡献", "关键贡献", "核心创新", "关键创新",
+    "新方法", "新框架", "新模型", "显著提升", "大幅提升", "优于", "超越", "突破", "填补空白",
+    "we propose", "we present", "we introduce", "we design", "propose a novel", "novel",
+    "contribution", "key contribution", "main contribution", "our contributions",
+    "key innovation", "outperform", "significantly outperform", "surpass", "superior to",
+    "state-of-the-art", "sota", "first to", "improvement over", "our method",
+]
+
+# 专家档·方法（中档）：去掉 步骤/结构/函数/公式/层/权重/激活 这类最通用的，保留实义方法术语
+_METHOD_KW_EXPERT = [
+    "算法", "流程", "框架", "模型", "网络", "模块", "架构", "超参数", "参数",
+    "训练", "优化", "损失函数", "实验设置", "数据集", "对比", "消融", "基线",
+    "卷积", "注意力", "自注意力", "编码器", "解码器", "正则化", "梯度下降", "学习率",
+    "批大小", "收敛", "预训练", "微调", "评价指标", "准确率", "召回率", "精确率",
+    "交叉验证", "端到端", "特征提取", "特征融合",
+    "architecture", "framework", "model", "network", "module", "parameter",
+    "hyperparameter", "training", "optimizer", "loss", "dataset", "ablation",
+    "comparison", "accuracy", "algorithm", "attention", "convolution", "transformer",
+    "encoder", "decoder", "regularization", "gradient", "learning rate", "batch",
+    "normalization", "pretrain", "fine-tune", "metric", "precision", "recall",
+    "benchmark", "convergence", "end-to-end",
+]
+
+# 三档评分尺度。cap = 总分上限（老师默认 85，前端滑块可在 70~100 调；专家 72；教授 65）。
+# data_* 为「数据支撑」三个分量的上限，实际得分按量化值个数线性升到上限（见 analyze_paper_quality）。
 SCORE_PROFILES = {
-    "temperate": {
-        "label": "温和",
-        "innovation_kw": _INNOVATION_KW_TEMPERATE,
-        "innovation_coef": 4,
-        "method_kw": _METHOD_KW_TEMPERATE,
-        "method_coef": 2,
+    "teacher": {
+        "label": "老师", "cap": 85,
+        "innovation_kw": _INNOVATION_KW_TEACHER, "innovation_coef": 2.5,
+        "method_kw": _METHOD_KW_TEACHER, "method_coef": 1.5,
         "data_expr": 12, "data_conc": 8, "data_cross": 5,
         "num_strict": False,
     },
-    "strict": {
-        "label": "严格",
-        "innovation_kw": _INNOVATION_KW_STRICT,
-        "innovation_coef": 2,
-        "method_kw": _METHOD_KW_STRICT,
-        "method_coef": 1.1,
+    "expert": {
+        "label": "专家", "cap": 72,
+        "innovation_kw": _INNOVATION_KW_EXPERT, "innovation_coef": 2.2,
+        "method_kw": _METHOD_KW_EXPERT, "method_coef": 1.3,
+        "data_expr": 10, "data_conc": 7, "data_cross": 5,
+        "num_strict": False,
+    },
+    "professor": {
+        "label": "教授", "cap": 65,
+        "innovation_kw": _INNOVATION_KW_PROFESSOR, "innovation_coef": 2.0,
+        "method_kw": _METHOD_KW_PROFESSOR, "method_coef": 1.1,
         "data_expr": 8, "data_conc": 8, "data_cross": 5,
-        "num_strict": True,  # 数据判定只认带单位/百分比/小数，裸整数不算量化指标
+        "num_strict": True,  # 数据只认带单位/百分比/小数，裸整数不算量化指标
     },
 }
 
 
-def analyze_paper_quality(text, sections, mode='temperate'):
+def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
     """
     本地自研算法：四维论文质量评分。
     不依赖任何外部 API，全程本地计算。
@@ -432,7 +464,7 @@ def analyze_paper_quality(text, sections, mode='temperate'):
     """
     import re
 
-    prof = SCORE_PROFILES.get(mode, SCORE_PROFILES["temperate"])
+    prof = SCORE_PROFILES.get(mode, SCORE_PROFILES["teacher"])
     result = {"total": 0, "dimensions": {}, "suggestions": []}
     _no_sections = not any(sections.values())
 
@@ -498,14 +530,15 @@ def analyze_paper_quality(text, sections, mode='temperate'):
     expr_nums = set(num_pattern.findall(experiment_text))
     cross_nums = conc_nums & expr_nums
 
-    data_score = 0
+    # 按「量化值个数」分级给分（不再“有数字就给满”，治虚高）：
+    # 不同数值达到 full_at 个即给满该分量上限，线性升、超出封顶。
+    def _graded(count, full_at, cap):
+        return min(cap, cap * count / full_at) if count > 0 else 0
+    data_score = (_graded(len(expr_nums), 6, prof["data_expr"])      # 正文/实验的量化数据
+                  + _graded(len(conc_nums), 3, prof["data_conc"])    # 结论引用具体数据
+                  + _graded(len(cross_nums), 2, prof["data_cross"]))  # 结论数据与实验交叉
+    data_score = round(data_score)
     data_suggestions = []
-    if expr_nums:
-        data_score += prof["data_expr"]   # 实验/正文有量化数据
-    if conc_nums:
-        data_score += prof["data_conc"]   # 结论也引用了具体数据
-    if cross_nums:
-        data_score += prof["data_cross"]  # 数据有交叉（结论引用了实验数字）
 
     if not conc_nums:
         data_suggestions.append("结论段落未检测到具体数值，建议用实验数据（如准确率、性能提升百分比）支撑结论")
@@ -551,7 +584,14 @@ def analyze_paper_quality(text, sections, mode='temperate'):
              + result["dimensions"]["innovation"]["score"]
              + result["dimensions"]["data_support"]["score"]
              + result["dimensions"]["method"]["score"])
-    result["total"] = total
+    # 总分按各档上限裁剪：老师用 teacher_cap（前端滑块 70~100），专家/教授用 profile 固定值。
+    # 上限只“封顶”不“托底”——平庸论文靠各维度自然落到中段，扎实的才会顶到上限。
+    if mode == "teacher":
+        cap = max(70, min(100, teacher_cap))
+    else:
+        cap = prof.get("cap", 100)
+    result["total"] = min(total, cap)
+    result["cap"] = cap
 
     # 全局建议（按分数最低维度优先）
     dims_sorted = sorted(result["dimensions"].values(), key=lambda d: d["score"] / d["max"])
@@ -1324,10 +1364,15 @@ def _analyze_and_respond(path, display_filename):
     local_summary = {k: v for k, v in sections.items() if v} or None
 
     # 本地自研评分（四维体检，不依赖外部 API）
-    score_mode = request.form.get('score_mode', 'temperate')
+    score_mode = request.form.get('score_mode', 'teacher')
     if score_mode not in SCORE_PROFILES:
-        score_mode = 'temperate'
-    quality_score = analyze_paper_quality(text, sections, score_mode)
+        score_mode = 'teacher'
+    try:
+        teacher_cap = int(float(request.form.get('teacher_cap', 85)))
+    except (TypeError, ValueError):
+        teacher_cap = 85
+    teacher_cap = max(70, min(100, teacher_cap))
+    quality_score = analyze_paper_quality(text, sections, score_mode, teacher_cap)
 
     # AI 深度分析：三档独立引擎，按优先级 v4pro 高级 > 用户填的 Key > 本地大模型 选用。
     # v4pro = deepseek-v3 高级模式（产品线包装）：5h 滚动窗口最多 5 次，配额闸门在后端

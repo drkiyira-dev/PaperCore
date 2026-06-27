@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分析结果 · PaperCore AI 学术论文分析系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=27">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=28">
     <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
 </head>
 <body>
@@ -307,9 +307,17 @@ function renderResult(data) {
     if (data.quality_score) {
         renderQuality(data.quality_score);
         const smTag = document.getElementById('scoreModeTag');
-        if (smTag && data.score_mode === 'strict') {
-            smTag.textContent = '🔍 严格档';
-            smTag.style.display = '';
+        if (smTag && data.score_mode) {
+            const _cap = (data.quality_score && data.quality_score.cap) || '';
+            const _lab = {
+                teacher: '🌱 老师档' + (_cap ? ' ≤' + _cap : ''),
+                expert: '◆ 专家档',
+                professor: '🔻 教授档',
+            };
+            if (_lab[data.score_mode]) {
+                smTag.textContent = _lab[data.score_mode];
+                smTag.style.display = '';
+            }
         }
     }
     if (data.analysis_overview) renderOverview(data.analysis_overview);

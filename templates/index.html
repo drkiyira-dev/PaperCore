@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PaperCore · AI 学术论文分析系统</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=28">
     <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
 </head>
 <body>
@@ -177,20 +177,31 @@
                     </div>
                 </div>
 
-                <!-- 评分尺度（论文体检的松紧档，默认温和） -->
+                <!-- 评分尺度（论文体检的松紧档，默认老师；三档各自配色） -->
                 <div class="mode-section">
                     <label class="section-label">论文体检 · 评分尺度</label>
-                    <div class="mode-selector" id="scoreSelector">
-                        <div class="mode-card active" data-score="temperate">
+                    <div class="mode-selector score-selector" id="scoreSelector">
+                        <div class="mode-card score-card score-teacher active" data-score="teacher">
                             <span class="mode-icon">🌱</span>
-                            <span class="mode-name">温和</span>
-                            <span class="mode-desc">鼓励为主 · 给作品打气</span>
+                            <span class="mode-name">老师</span>
+                            <span class="mode-desc">鼓励为主 · 分数可调</span>
                         </div>
-                        <div class="mode-card" data-score="strict">
-                            <span class="mode-icon">🔍</span>
-                            <span class="mode-name">严格</span>
-                            <span class="mode-desc">审稿视角 · 挑出短板</span>
+                        <div class="mode-card score-card score-expert" data-score="expert">
+                            <span class="mode-icon">◆</span>
+                            <span class="mode-name">专家</span>
+                            <span class="mode-desc">同行视角 · 封顶 72</span>
                         </div>
+                        <div class="mode-card score-card score-professor" data-score="professor">
+                            <span class="mode-icon">🔻</span>
+                            <span class="mode-name">教授</span>
+                            <span class="mode-desc">审稿视角 · 封顶 65</span>
+                        </div>
+                    </div>
+                    <!-- 老师档专属：分数上限滑块（70~100），仅老师档显示 -->
+                    <div class="teacher-cap-row" id="teacherCapRow">
+                        <span class="teacher-cap-label">老师档 · 分数上限</span>
+                        <input type="range" id="teacherCapSlider" min="70" max="100" step="1" value="85">
+                        <span class="teacher-cap-value" id="teacherCapValue">85</span>
                     </div>
                 </div>
 
@@ -487,6 +498,6 @@
     </main>
 </div>
 
-<script src="{{ url_for('static', filename='js/main.js') }}?v=10"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}?v=11"></script>
 </body>
 </html>
