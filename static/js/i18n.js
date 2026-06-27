@@ -22,6 +22,7 @@
     // 侧栏导航 / 通用状态
     '工作台': 'Workbench', '我的文档': 'My Documents', '分析历史': 'History',
     '结构化报告': 'Reports', '设置': 'Settings', '系统设置': 'System Settings',
+    '产品介绍': 'Product', '关于我们': 'About',
     '本地运行中': 'Running Locally', '所有数据仅在本地处理': 'All data processed locally',
     '本地模式': 'Local Mode', '数据不上云': 'No Cloud Upload', '隐私保护中': 'Privacy Protected',
     '数据经 API 上云': 'Data sent via API', 'AI 模式': 'AI Mode',

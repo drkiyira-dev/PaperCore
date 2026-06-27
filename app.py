@@ -1100,8 +1100,21 @@ def reports_page():
 
 @app.route('/about')
 def about_page():
-    """关于我们 / 产品介绍页（独立宣传落地页 landing/index.html，自包含单文件）。"""
+    """关于我们 / 详解页（独立落地页 landing/index.html，自包含单文件）。"""
     return send_from_directory(os.path.join(app.root_path, 'landing'), 'index.html')
+
+
+@app.route('/brand/')
+def brand_page():
+    """产品介绍 / 品牌广告页（brand/warm，自包含单文件；brand 本身零改动）。
+    带斜杠的规则会让 /brand 自动 308 跳到 /brand/，使相对资源 style.css/script.js 正确解析。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'warm'), 'index.html')
+
+
+@app.route('/brand/<path:filename>')
+def brand_assets(filename):
+    """发布 brand/warm 下的静态资源（style.css / script.js）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'warm'), filename)
 
 
 @app.route('/settings')
