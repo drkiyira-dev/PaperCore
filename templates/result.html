@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析结果 · PaperCore AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=27">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- 左侧导航栏（与首页一致） -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PaperCore</span>
+            <button class="sidebar-toggle" id="sidebarToggle" type="button"
+                    aria-label="折叠/展开导航">«</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item" href="/">
+                <span class="nav-icon">⊞</span><span class="nav-text">工作台</span>
+            </a>
+            <a class="nav-item" href="/documents">
+                <span class="nav-icon">☰</span><span class="nav-text">我的文档</span>
+            </a>
+            <a class="nav-item" href="/history">
+                <span class="nav-icon">◷</span><span class="nav-text">分析历史</span>
+            </a>
+            <a class="nav-item" href="/reports">
+                <span class="nav-icon">⊡</span><span class="nav-text">结构化报告</span>
+            </a>
+            <a class="nav-item" href="/settings">
+                <span class="nav-icon">⚙</span><span class="nav-text">设置</span>
+            </a>
+            <a class="nav-item" href="/about" target="_blank" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:14px">
+                <span class="nav-icon" style="color:var(--color-accent)">✦</span><span class="nav-text">关于我们</span>
+            </a>
+        </nav>
+        <div class="sidebar-status">
+            <div class="status-dot running"></div>
+            <div class="status-info">
+                <span class="status-label">本地运行中</span>
+                <span class="status-desc">所有数据仅在本地处理</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-area">
+
+        <!-- 顶部状态栏 -->
+        <div class="topbar">
+            <div class="result-topbar-left">
+                <span class="topbar-title">分析结果</span>
+                <span class="result-mode-badge" id="modeBadge" style="display:none"></span>
+            </div>
+            <div class="status-badges">
+                <span class="badge">本地模式</span>
+                <span class="badge">数据不上云</span>
+                <span class="badge badge-green">隐私保护中</span>
+            </div>
+        </div>
+
+        <!-- 内容区 -->
+        <div class="result-content">
+
+            <!-- 报告头部 -->
+            <div id="reportHeader" class="report-header" style="display:none">
+                <div class="report-brand-row">
+                    <div class="report-brand-name">PaperCore <span class="report-sub">AI 分析报告</span></div>
+                    <span class="report-gen-badge">AI GENERATED</span>
+                </div>
+                <div class="report-meta-row" id="reportMetaRow"></div>
+            </div>
+
+            <!-- 无数据提示 -->
+            <div id="noData" class="no-data" style="display:none">
+                未找到解析数据，请<a href="/">返回首页</a>重新上传。
+            </div>
+
+            <!-- 错误提示 -->
+            <div id="resultError" class="result-error" style="display:none"></div>
+
+            <!-- 统计卡片 -->
+            <div id="statsBar" class="stats-bar" style="display:none">
+                <div class="stat-card">
+                    <span class="stat-num" id="statLen">—</span>
+                    <span class="stat-label">文本字数</span>
+                </div>
+                <div class="stat-card keep">
+                    <span class="stat-num" id="statKeep">—</span>
+                    <span class="stat-label">核心命中</span>
+                </div>
+                <div class="stat-card fallback">
+                    <span class="stat-num" id="statFallback">—</span>
+                    <span class="stat-label">候选片段</span>
+                </div>
+                <div class="stat-card review">
+                    <span class="stat-num" id="statReview">—</span>
+                    <span class="stat-label">待审查</span>
+                </div>
+            </div>
+
+            <!-- 论文体检报告（本地自研算法） -->
+            <div id="qualitySection" class="quality-section" style="display:none">
+                <div class="section-header">
+                    <h2>论文体检报告 <span class="quality-kicker">本地算法 · 不上云</span><span class="score-mode-tag" id="scoreModeTag" style="display:none"></span></h2>
+                </div>
+                <div class="quality-overview">
+                    <div class="quality-score-ring" id="qualityRing">
+                        <span class="qs-num" id="qualityTotal">—</span>
+                        <span class="qs-max">/ 100</span>
+                    </div>
+                    <div class="quality-dims" id="qualityDims"></div>
+                </div>
+                <div class="quality-suggestions" id="qualitySuggestions"></div>
+            </div>
+
+            <!-- 综合点评（本地生成，不上云） -->
+            <div id="overviewSection" class="overview-section" style="display:none">
+                <div class="section-header">
+                    <h2>综合点评 <span class="quality-kicker">本地生成 · 不上云</span></h2>
+                </div>
+                <div class="overview-card">
+                    <p class="overview-text" id="overviewText"></p>
+                    <div class="overview-suggestions" id="overviewSuggestions"></div>
+                </div>
+            </div>
+
+            <!-- AI 分析结果（模式感知） -->
+            <div id="aiResultSection" class="ai-result-section" style="display:none">
+                <div class="section-header">
+                    <h2>DeepSeek 结构化分析</h2>
+                </div>
+                <div id="demoNotice" class="demo-notice" style="display:none">
+                    <span class="demo-badge">演示模式</span>
+                    <span>当前为演示分析结果，用于展示系统报告结构；接入 DeepSeek 后将根据论文内容生成真实分析。</span>
+                </div>
+                <div class="ai-result-grid" id="aiResultGrid"></div>
+            </div>
+
+            <!-- 规则匹配结果（折叠） -->
+            <div id="matchesSection" class="matches-section" style="display:none">
+                <details open>
+                    <summary>
+                        <span>规则匹配结果</span>
+                        <span class="matches-summary-count" id="matchesSummaryCount"></span>
+                    </summary>
+                    <div class="matches-zone-title review-zone-title" id="reviewZoneTitle" style="display:none">
+                        <span class="zone-dot"></span>待审查 · 建议精简（降噪去水的重点）
+                    </div>
+                    <div class="matches-content matches-content-review" id="reviewCards"></div>
+                    <div class="matches-zone-title keep-zone-title" id="keepZoneTitle" style="display:none">
+                        <span class="zone-dot"></span>核心命中 · 建议保留
+                    </div>
+                    <div class="matches-content" id="keepCards"></div>
+                </details>
+            </div>
+
+            <!-- 导出 -->
+            <div id="exportSection" class="export-section" style="display:none">
+                <h3>导出报告</h3>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="exportResult('md')">导出 Markdown</button>
+                    <button class="btn btn-secondary" onclick="exportResult('txt')">导出 TXT</button>
+                    <a href="/" class="btn btn-link">← 重新上传</a>
+                </div>
+            </div>
+
+            <!-- 报告底部 -->
+            <div id="reportFooter" class="report-footer" style="display:none">
+                由 PaperCore AI 自动生成 · 仅供学术参考 · 数据未上云
+            </div>
+
+            <!-- 行内加载（导出时） -->
+            <div id="loadingInline" class="loading-inline" style="display:none">
+                <div class="spinner"></div>
+                <span id="loadingInlineText">处理中...</span>
+            </div>
+
+        </div>
+    </main>
+
+    <aside class="source-rail collapsed" id="sourceRail" style="display:none">
+        <div class="source-rail-header">
+            <span class="source-rail-title">原文对照</span>
+            <button class="source-rail-close" id="sourceRailClose" type="button"
+                    aria-label="收起原文栏">⟩</button>
+        </div>
+        <div class="source-panel" id="sourcePanel"></div>
+    </aside>
+</div>
+
+<script>
+// === Helpers ===
+function esc(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function showInlineLoading(msg) {
+    const el = document.getElementById('loadingInline');
+    const tx = document.getElementById('loadingInlineText');
+    if (el) { el.style.display = 'flex'; if (tx) tx.textContent = msg || '处理中...'; }
+}
+
+function hideInlineLoading() {
+    const el = document.getElementById('loadingInline');
+    if (el) el.style.display = 'none';
+}
+
+function showResultError(msg) {
+    const el = document.getElementById('resultError');
+    if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+// === Mode Labels ===
+const MODE_LABELS = {
+    quick:      '⚡ 30秒速读',
+    structured: '🔬 结构化理解',
+    formula:    '∑ 公式/实验保护',
+    defense:    '🎓 答辩汇报',
+};
+
+// === Boot: injected demo data takes priority over sessionStorage ===
+const __demo = {{ demo_data | default(none) | tojson | safe }};
+const raw = __demo ? JSON.stringify(__demo) : sessionStorage.getItem('uploadResult');
+let __fullText = '';
+if (!raw) {
+    document.getElementById('noData').style.display = 'block';
+} else {
+    try {
+        renderResult(JSON.parse(raw));
+    } catch(e) {
+        document.getElementById('noData').style.display = 'block';
+    }
+}
+
+document.getElementById('sourceRailClose')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const r = document.getElementById('sourceRail');
+    r.classList.contains('collapsed') ? openSourceRail() : closeSourceRail();
+});
+
+document.getElementById('sourceRail')?.addEventListener('click', () => {
+    const r = document.getElementById('sourceRail');
+    if (r.classList.contains('collapsed')) openSourceRail();
+});
+
+document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    const s = document.getElementById('sidebar');
+    collapseSidebar(!s.classList.contains('collapsed'));
+});
+
+// === Main Render ===
+function renderResult(data) {
+    const mode = data.analysis_mode || 'structured';
+    const now  = new Date().toLocaleString('zh-CN', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+    __fullText = data.text || '';
+
+    // Report header
+    const ENGINE_LABELS = {
+        v4pro:    '✨ v4pro（高级模式）',
+        deepseek: '☁ DeepSeek（云端）',
+        ollama:   '🖥 本地大模型（Ollama）',
+    };
+    const metaRow = document.getElementById('reportMetaRow');
+    if (metaRow) {
+        const items = [
+            `<span class="report-meta-item"><span class="rml">论文</span>${esc(data.filename || '未知文件')}</span>`,
+            `<span class="report-meta-item"><span class="rml">分析时间</span>${now}</span>`,
+            `<span class="report-meta-item"><span class="rml">模式</span>${MODE_LABELS[mode] || mode}</span>`,
+        ];
+        if (data.ai_engine_used && ENGINE_LABELS[data.ai_engine_used]) {
+            items.push(`<span class="report-meta-item"><span class="rml">分析引擎</span>${ENGINE_LABELS[data.ai_engine_used]}</span>`);
+        }
+        metaRow.innerHTML = items.join('');
+    }
+    document.getElementById('reportHeader').style.display = 'block';
+
+    // Mode badge
+    const badge = document.getElementById('modeBadge');
+    if (badge) { badge.textContent = MODE_LABELS[mode] || mode; badge.style.display = 'inline-block'; }
+
+    // Stats
+    const keeps    = (data.matches || []).filter(m => m.action === 'keep' && !m.is_fallback);
+    const fallbacks = (data.matches || []).filter(m => m.is_fallback);
+    const reviews  = (data.matches || []).filter(m => m.action === 'review');
+    document.getElementById('statLen').textContent      = (data.text_length || 0).toLocaleString();
+    document.getElementById('statKeep').textContent     = keeps.length;
+    document.getElementById('statFallback').textContent = fallbacks.length;
+    document.getElementById('statReview').textContent   = reviews.length;
+    document.getElementById('statsBar').style.display   = 'grid';
+
+    const sourceRail  = document.getElementById('sourceRail');
+    const sourcePanel = document.getElementById('sourcePanel');
+    if (sourceRail && sourcePanel && __fullText) {
+        sourcePanel.innerHTML = esc(__fullText);
+        sourceRail.style.display = '';
+    }
+
+    // AI Result — 优先级：真实 AI → 本地章节提取 → 演示数据
+    if (data.quality_score) {
+        renderQuality(data.quality_score);
+        const smTag = document.getElementById('scoreModeTag');
+        if (smTag && data.score_mode === 'strict') {
+            smTag.textContent = '🔍 严格档';
+            smTag.style.display = '';
+        }
+    }
+    if (data.analysis_overview) renderOverview(data.analysis_overview);
+
+    // AI Result — 优先级：真实 AI → 本地章节提取 → 演示数据
+    const hasLocal = data.local_summary && Object.values(data.local_summary).some(v => v && v.length > 0);
+    if (data.ai_result) {
+        renderAIResult(data.ai_result, mode, false);
+    } else if (hasLocal) {
+        renderLocalSummary(data.local_summary);
+    } else {
+        renderAIResult(generateFallbackAI(mode, data.filename), mode, true);
+    }
+
+    // Rule Matches
+    const allKeeps   = (data.matches || []).filter(m => m.action === 'keep' && !m.is_fallback);
+    const allFallbacks = (data.matches || []).filter(m => m.is_fallback);
+    const allReviews = (data.matches || []).filter(m => m.action === 'review');
+
+    if (allKeeps.length > 0 || allFallbacks.length > 0 || allReviews.length > 0) {
+        const countEl = document.getElementById('matchesSummaryCount');
+        if (countEl) countEl.textContent = `${allKeeps.length} 核心命中 · ${allFallbacks.length} 候选片段 · ${allReviews.length} 待审查`;
+
+        if (allKeeps.length === 0 && allFallbacks.length > 0) {
+            const notice = document.createElement('p');
+            notice.className = 'fallback-notice';
+            notice.textContent = '未匹配到强规则片段，已展示候选片段（基于关键词密度自动选取）。';
+            document.getElementById('keepCards').appendChild(notice);
+        }
+
+        if (allReviews.length > 0) document.getElementById('reviewZoneTitle').style.display = 'flex';
+        if (allKeeps.length > 0 || allFallbacks.length > 0) document.getElementById('keepZoneTitle').style.display = 'flex';
+
+        allKeeps.forEach(m => {
+            document.getElementById('keepCards').appendChild(buildMatchCard(m, false));
+        });
+        allFallbacks.forEach(m => {
+            document.getElementById('keepCards').appendChild(buildMatchCard(m, false));
+        });
+        allReviews.forEach(m => {
+            document.getElementById('reviewCards').appendChild(buildMatchCard(m, true));
+        });
+        document.getElementById('matchesSection').style.display = 'block';
+    }
+
+    document.getElementById('exportSection').style.display = 'block';
+    document.getElementById('reportFooter').style.display = 'block';
+}
+
+function buildMatchCard(m, isReview) {
+    const isFallbackCard = !!m.is_fallback;
+    const typeLabel = isFallbackCard ? '候选' : (isReview ? '待审查' : '核心');
+    const typeClass = isFallbackCard ? 'fallback' : (isReview ? 'review' : '');
+    const saliencePct = Math.max(0, Math.min(100, Math.round((m.salience || 0) * 100)));
+    const salienceLevel = saliencePct >= 75 ? 'high' : (saliencePct >= 50 ? 'mid' : 'low');
+    const div = document.createElement('div');
+    div.className = 'match-card' + (isReview ? ' review-item' : '') + (isFallbackCard ? ' fallback-item' : '');
+    div.dataset.start = m.start;
+    div.dataset.end = m.end;
+    // 显著度分解（可解释）：仅规则命中卡片带 salience_factors（兜底卡无）
+    const factors = Array.isArray(m.salience_factors) ? m.salience_factors : null;
+    const whyHtml = factors ? `
+        <div class="match-why">
+            <button class="match-why-toggle" type="button">为什么是 ${saliencePct}%？▾</button>
+            <div class="match-why-detail" style="display:none">
+                ${factors.map(f => `
+                    <div class="why-row">
+                        <span class="why-label">${esc(f.label)}</span>
+                        <span class="why-bar"><span style="width:${Math.round(f.value*100)}%"></span></span>
+                        <span class="why-val">${f.value} × ${f.weight} = <strong>${f.contribution}</strong></span>
+                    </div>`).join('')}
+                <div class="why-note">显著度 = 四项加权求和（裁剪到 0.05–0.95）· 本地启发式、非概率</div>
+            </div>
+        </div>` : '';
+
+    div.innerHTML = `
+        <div class="match-card-header">
+            <div class="match-title-row">
+                <span class="match-tag${typeClass ? ' ' + typeClass : ''}">${typeLabel}</span>
+                <span class="match-rule-name">${esc(m.description)}</span>
+                ${isFallbackCard ? '<span class="match-fallback-badge">关键词密度兜底</span>' : ''}
+            </div>
+            <span class="match-salience salience-${salienceLevel}">
+                <span>显著度</span>
+                <strong>${saliencePct}%</strong>
+                <span class="match-salience-bar"><span style="width:${saliencePct}%"></span></span>
+            </span>
+        </div>
+        <div class="match-snippet">${esc(m.snippet)}</div>
+        ${m.note ? `<div class="match-note">${esc(m.note)}</div>` : ''}
+        ${whyHtml}`;
+    div.addEventListener('click', () => highlightSource(m.start, m.end));
+    // 「为什么」展开：阻止冒泡，避免触发卡片的原文高亮
+    const toggle = div.querySelector('.match-why-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const detail = div.querySelector('.match-why-detail');
+            const open = detail.style.display !== 'none';
+            detail.style.display = open ? 'none' : 'block';
+            toggle.textContent = `为什么是 ${saliencePct}%？${open ? '▾' : '▴'}`;
+        });
+    }
+    return div;
+}
+
+function highlightSource(start, end) {
+    const panel = document.getElementById('sourcePanel');
+    if (!panel || !__fullText) return;
+    if (typeof start !== 'number' || typeof end !== 'number'
+        || start < 0 || end > __fullText.length || start >= end) {
+        return;
+    }
+    panel.innerHTML = esc(__fullText.slice(0, start))
+        + '<mark class="src-hl">' + esc(__fullText.slice(start, end)) + '</mark>'
+        + esc(__fullText.slice(end));
+    const mk = panel.querySelector('.src-hl');
+    if (mk) mk.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    openSourceRail();
+    collapseSidebar(true);
+}
+
+function openSourceRail()  { document.getElementById('sourceRail')?.classList.remove('collapsed'); syncRailIcon(); requestAnimationFrame(() => document.querySelector('#sourcePanel .src-hl')?.scrollIntoView({ block: 'center', behavior: 'smooth' })); }
+function closeSourceRail() { document.getElementById('sourceRail')?.classList.add('collapsed');   syncRailIcon(); }
+function collapseSidebar(v){ document.getElementById('sidebar')?.classList.toggle('collapsed', v); syncSidebarIcon(); }
+function syncRailIcon()    { const b=document.getElementById('sourceRailClose'); const c=document.getElementById('sourceRail')?.classList.contains('collapsed'); if(b) b.textContent = c ? '⟨' : '⟩'; }
+function syncSidebarIcon() { const b=document.getElementById('sidebarToggle');  const c=document.getElementById('sidebar')?.classList.contains('collapsed');    if(b) b.textContent = c ? '»' : '«'; }
+
+// === Fallback Demo Data ===
+function generateFallbackAI(mode, filename) {
+    const title = (filename || '').replace(/\.[^.]+$/, '') || '本论文';
+    if (mode === 'quick') {
+        return {
+            research_question: `${title}针对现有方法在精度与效率上的不足，提出了一种改进的深度学习框架，旨在提升模型在复杂场景下的泛化能力。`,
+            core_method: '采用多尺度特征融合策略，结合注意力机制对关键特征进行加权，辅以对比学习损失函数优化表征空间。',
+            conclusion: '实验结果表明，所提方法在基准数据集上较基线模型提升了 3.7%，同时推理速度提高约 18%，验证了方法的有效性与实用性。',
+        };
+    }
+    if (mode === 'formula') {
+        return {
+            formulas: [
+                { name: '注意力权重', expression: 'α_i = softmax(Q·Kᵀ / √d_k)', meaning: '计算查询向量与键向量的归一化相似度' },
+                { name: '损失函数',   expression: 'L = L_ce + λ·L_contrast',     meaning: '交叉熵与对比学习损失的加权组合' },
+                { name: '特征融合',   expression: 'F = concat(F₁, F₂, …, Fₙ)',   meaning: '多尺度特征拼接后经线性层投影' },
+            ],
+            variables: [
+                { symbol: 'Q, K, V', definition: '注意力机制中的查询、键、值矩阵' },
+                { symbol: 'd_k',     definition: '键向量的维度，用于缩放防止梯度消失' },
+                { symbol: 'λ',       definition: '对比损失权重超参数，默认取 0.1' },
+            ],
+            experiment_setup: '在 NVIDIA A100 GPU 上训练，batch size=64，学习率 1e-4，AdamW 优化器，共训练 100 个 epoch，采用余弦退火学习率调度。',
+            key_results: [
+                'Top-1 准确率：87.3%（+3.7% vs. baseline）',
+                '推理延迟：12.4ms / sample（提升 18%）',
+                '参数量：34.6M，较原始模型减少 12%',
+            ],
+        };
+    }
+    if (mode === 'defense') {
+        return {
+            background: `随着深度学习在各领域的广泛应用，如何在保证精度的同时提升模型效率成为研究热点。${title}聚焦于该问题，在已有方法基础上提出系统性改进方案。`,
+            innovations: [
+                '提出多尺度注意力融合模块，有效捕获局部与全局特征',
+                '设计对比学习辅助训练策略，增强类间区分能力',
+                '构建轻量化骨干网络，降低部署成本',
+            ],
+            highlights: '在三个公开基准数据集上均达到 SOTA 水平；消融实验充分验证各模块贡献；代码已开源，可复现性强。',
+            qa_pairs: [
+                { q: '与现有方法相比，本文方法的核心优势是什么？',       a: '在精度和效率上实现了更好的权衡，尤其是注意力融合模块在小样本场景下优势显著。' },
+                { q: '对比学习损失的权重 λ 如何确定？',                   a: '通过网格搜索在验证集上调优，最终取 λ=0.1，该值在多个数据集上均表现稳定。' },
+                { q: '该方法是否适用于实时场景？',                         a: '推理延迟约 12ms，满足大多数实时应用需求，后续可进一步量化压缩部署到边缘设备。' },
+            ],
+        };
+    }
+    // structured (default)
+    return {
+        research_question: `${title}聚焦于现有深度学习模型在特征表达与泛化能力方面的局限，探索多模态融合与自监督预训练在该任务上的适用性。`,
+        core_method: '以 Transformer 为骨干，引入跨模态注意力机制实现特征对齐；采用掩码自编码预训练策略提升数据利用效率；训练阶段结合对比学习损失优化嵌入空间分布。',
+        key_formulas: [
+            'CrossAttn(Q, K, V) = softmax(QKᵀ / √d) · V',
+            'L_total = L_ce + α·L_contrast + β·L_recon',
+        ],
+        experimental_data: '在 ImageNet-1K 和两个下游任务数据集上评估；Top-1 准确率 87.3%，F1-score 0.891；与 ViT-B/16 基线相比参数量减少 15%，推理速度提升 22%。',
+        conclusion: '实验结果验证了所提方法的有效性：多模态融合模块在复杂场景下显著提升了模型鲁棒性，自监督预训练策略有效缓解了标注数据稀缺问题。',
+        innovations: [
+            '首次将跨模态注意力引入该任务，实现语义级特征对齐',
+            '提出掩码比例自适应策略，动态调节预训练难度',
+            '设计轻量化解码器，在保持性能的同时降低 15% 参数量',
+        ],
+        potential_risks: [
+            '预训练数据分布与目标域存在差异，迁移效果有待进一步验证',
+            '超参数 α、β 对不同数据集敏感，需重新调优',
+        ],
+        improvement_suggestions: [
+            '引入领域自适应模块，缓解分布偏移问题',
+            '开展更大规模消融实验，量化各组件的独立贡献',
+            '探索知识蒸馏方案，进一步压缩模型用于边缘部署',
+        ],
+    };
+}
+
+// === Local Summary Renderer (本地章节提取结果) ===
+function renderLocalSummary(ls) {
+    const section = document.getElementById('aiResultSection');
+    const grid    = document.getElementById('aiResultGrid');
+    const notice  = document.getElementById('demoNotice');
+    const hdr     = section && section.querySelector('.section-header h2');
+    if (!section || !grid) return;
+
+    if (notice) notice.style.display = 'none';
+    if (hdr)    hdr.textContent = '本地提取结果';
+
+    const badge = document.getElementById('modeBadge');
+    if (badge) { badge.textContent = '本地规则模式'; badge.style.display = 'inline-block'; }
+
+    let html = '';
+    if (ls.abstract)    html += card('wide',  '📝 摘要',    ls.abstract);
+    if (ls.keywords)    html += card('',       '🔑 关键词',  ls.keywords);
+    if (ls.method)      html += card('',       '⚙️ 研究方法', ls.method);
+    if (ls.experiment)  html += card('',       '📊 实验结果', ls.experiment);
+    if (ls.conclusion)  html += card('wide',  '✅ 结论',     ls.conclusion);
+
+    if (!html) {
+        html = card('wide', '提取说明',
+            '本地规则未能识别标准章节结构（摘要/方法/结论）。' +
+            '可能原因：PDF 为图像版或章节命名不规范。' +
+            '请尝试接入 DeepSeek API 进行 AI 分析，或查看下方规则匹配片段。');
+    }
+
+    grid.innerHTML = html;
+    section.style.display = 'block';
+}
+
+function card(width, label, content) {
+    return `<div class="ai-card${width ? ' ' + width : ''}">
+        <div class="ai-card-label">${label}</div>
+        <div class="ai-card-content">${esc(content)}</div>
+    </div>`;
+}
+
+// === AI Result Renderers ===
+function renderAIResult(ai, mode, isFallback) {
+    const section = document.getElementById('aiResultSection');
+    const grid    = document.getElementById('aiResultGrid');
+    const notice  = document.getElementById('demoNotice');
+    if (!section || !grid) return;
+
+    if (notice) notice.style.display = isFallback ? 'flex' : 'none';
+
+    if (ai.raw) {
+        grid.innerHTML = `<div class="ai-card wide">
+            <div class="ai-card-label">AI 分析结果</div>
+            <div class="raw-result">${esc(ai.raw)}</div>
+        </div>`;
+    } else if (mode === 'quick') {
+        grid.innerHTML = renderQuick(ai);
+    } else if (mode === 'formula') {
+        grid.innerHTML = renderFormula(ai);
+    } else if (mode === 'defense') {
+        grid.innerHTML = renderDefense(ai);
+    } else {
+        grid.innerHTML = renderStructured(ai);
+    }
+
+    section.style.display = 'block';
+}
+
+function renderQuick(ai) {
+    return `
+        <div class="ai-card">
+            <div class="ai-card-label">❓ 研究问题</div>
+            <div class="ai-card-content">${esc(ai.research_question)}</div>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">⚙️ 核心方法</div>
+            <div class="ai-card-content">${esc(ai.core_method)}</div>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">✅ 主要结论</div>
+            <div class="ai-card-content">${esc(ai.conclusion)}</div>
+        </div>`;
+}
+
+function renderStructured(ai) {
+    const formulas     = Array.isArray(ai.key_formulas)            ? ai.key_formulas            : [];
+    const innovations  = Array.isArray(ai.innovations)             ? ai.innovations             : [];
+    const risks        = Array.isArray(ai.potential_risks)         ? ai.potential_risks         : [];
+    const suggestions  = Array.isArray(ai.improvement_suggestions) ? ai.improvement_suggestions : [];
+    return `
+        <div class="ai-card">
+            <div class="ai-card-label">❓ 研究问题</div>
+            <div class="ai-card-content">${esc(ai.research_question)}</div>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">⚙️ 方法路线</div>
+            <div class="ai-card-content">${esc(ai.core_method)}</div>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">∑ 关键公式</div>
+            <ul class="ai-card-list">${listItems(formulas)}</ul>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">📊 实验数据</div>
+            <div class="ai-card-content">${esc(ai.experimental_data)}</div>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">✅ 主要结论</div>
+            <div class="ai-card-content">${esc(ai.conclusion)}</div>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">💡 创新贡献</div>
+            <ul class="ai-card-list">${listItems(innovations)}</ul>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">⚠️ 风险问题</div>
+            <ul class="ai-card-list">${listItems(risks)}</ul>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">✏️ 建议修改</div>
+            <ul class="ai-card-list">${listItems(suggestions)}</ul>
+        </div>`;
+}
+
+function renderFormula(ai) {
+    const formulas   = Array.isArray(ai.formulas)    ? ai.formulas    : [];
+    const variables  = Array.isArray(ai.variables)   ? ai.variables   : [];
+    const keyResults = Array.isArray(ai.key_results) ? ai.key_results : [];
+
+    const formulaRows = formulas.length
+        ? formulas.map(f => `<tr>
+                <td>${esc(f.name)}</td>
+                <td><code>${esc(f.expression)}</code></td>
+                <td>${esc(f.meaning)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="3" style="color:var(--color-text-muted)">未提取到公式</td></tr>';
+
+    const varRows = variables.length
+        ? variables.map(v => `<tr>
+                <td><code>${esc(v.symbol)}</code></td>
+                <td>${esc(v.definition)}</td>
+            </tr>`).join('')
+        : '<tr><td colspan="2" style="color:var(--color-text-muted)">未提取到变量定义</td></tr>';
+
+    return `
+        <div class="ai-card wide">
+            <div class="ai-card-label">∑ 核心公式</div>
+            <table class="formula-table">
+                <thead><tr><th>名称</th><th>表达式</th><th>含义</th></tr></thead>
+                <tbody>${formulaRows}</tbody>
+            </table>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">🔤 变量定义</div>
+            <table class="formula-table">
+                <thead><tr><th>符号</th><th>定义</th></tr></thead>
+                <tbody>${varRows}</tbody>
+            </table>
+        </div>
+        <div class="ai-card">
+            <div class="ai-card-label">🧪 实验设置</div>
+            <div class="ai-card-content">${esc(ai.experiment_setup)}</div>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">📊 关键结果</div>
+            <ul class="ai-card-list">${listItems(keyResults)}</ul>
+        </div>`;
+}
+
+function renderDefense(ai) {
+    const innovations = Array.isArray(ai.innovations) ? ai.innovations : [];
+    const qaPairs     = Array.isArray(ai.qa_pairs)    ? ai.qa_pairs    : [];
+
+    const qaHtml = qaPairs.length
+        ? qaPairs.map(qa => `
+            <div class="qa-pair">
+                <div class="qa-question">Q：${esc(qa.q || qa.question)}</div>
+                <div class="qa-answer">A：${esc(qa.a || qa.answer)}</div>
+            </div>`).join('')
+        : '<p style="color:var(--color-text-muted);font-size:13px">未生成问答对</p>';
+
+    return `
+        <div class="ai-card wide">
+            <div class="ai-card-label">📖 研究背景</div>
+            <div class="ai-card-content">${esc(ai.background)}</div>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">💡 核心创新点</div>
+            <ul class="ai-card-list">${listItems(innovations)}</ul>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">🌟 实验亮点</div>
+            <div class="ai-card-content">${esc(ai.highlights)}</div>
+        </div>
+        <div class="ai-card wide">
+            <div class="ai-card-label">❓ 预期问答</div>
+            ${qaHtml}
+        </div>`;
+}
+
+function listItems(arr) {
+    if (!arr || arr.length === 0) return '<li style="color:var(--color-text-muted)">未提取到</li>';
+    return arr.map(item => `<li>${esc(typeof item === 'string' ? item : JSON.stringify(item))}</li>`).join('');
+}
+
+// === 综合点评 Renderer（本地生成）===
+function renderOverview(ov) {
+    if (!ov || !ov.text) return;
+    const section = document.getElementById('overviewSection');
+    const textEl  = document.getElementById('overviewText');
+    const sugsEl  = document.getElementById('overviewSuggestions');
+    if (!section) return;
+    textEl.textContent = ov.text;
+    const sugs = ov.suggestions || [];
+    sugsEl.innerHTML = sugs.length
+        ? '<div class="overview-sugs-title">重点建议</div><ul>' +
+          sugs.map(s => `<li>${esc(s)}</li>`).join('') + '</ul>'
+        : '';
+    section.style.display = 'block';
+}
+
+// === Quality Score Renderer ===
+function renderQuality(qs) {
+    if (!qs || qs.total === undefined) return;
+
+    const section = document.getElementById('qualitySection');
+    const ring    = document.getElementById('qualityRing');
+    const totalEl = document.getElementById('qualityTotal');
+    const dimsEl  = document.getElementById('qualityDims');
+    const sugsEl  = document.getElementById('qualitySuggestions');
+    if (!section) return;
+
+    // 章节识别失败：不显示0分红圈，改为黄色提示框
+    if (qs.total === null) {
+        ring.style.display = 'none';
+        dimsEl.innerHTML = '';
+        const sugsHtml = (qs.suggestions || []).map(s => `<li>${esc(s)}</li>`).join('');
+        sugsEl.innerHTML = `
+            <div class="quality-warning">
+                <span class="quality-warning-icon">⚠️</span>
+                <div>
+                    <div class="quality-warning-title">${esc(qs.reason || '章节识别失败')}</div>
+                    <ul class="quality-warning-list">${sugsHtml}</ul>
+                </div>
+            </div>`;
+        section.style.display = 'block';
+        return;
+    }
+
+    const total = qs.total || 0;
+    totalEl.textContent = total;
+
+    const ringClass = total >= 80 ? 'high' : total >= 60 ? 'mid' : 'low';
+    ring.classList.add(ringClass);
+
+    const dimOrder = ['structure', 'innovation', 'data_support', 'method'];
+    let dimsHtml = '';
+    dimOrder.forEach(key => {
+        const d = (qs.dimensions || {})[key];
+        if (!d) return;
+        const pct = Math.round((d.score / d.max) * 100);
+        const barClass = pct >= 80 ? 'high' : pct >= 60 ? 'mid' : 'low';
+        dimsHtml += `
+            <div class="quality-dim">
+                <span class="qdim-label">${esc(d.label)}</span>
+                <div class="qdim-bar-wrap"><div class="qdim-bar ${barClass}" style="width:${pct}%"></div></div>
+                <span class="qdim-score">${d.score}/${d.max}</span>
+            </div>
+            <div class="qdim-detail">${esc(d.detail)}</div>`;
+    });
+    dimsEl.innerHTML = dimsHtml;
+
+    const sugs = qs.suggestions || [];
+    if (sugs.length > 0) {
+        let html = '<div class="quality-suggestions-title">改进建议</div>';
+        sugs.forEach(s => {
+            html += `<div class="quality-suggestion-item"><span class="qsi-icon">→</span><span>${esc(s)}</span></div>`;
+        });
+        sugsEl.innerHTML = html;
+    }
+
+    section.style.display = 'block';
+}
+
+function exportResult(format) {
+    const raw = sessionStorage.getItem('uploadResult');
+    if (!raw) { showResultError('无数据可导出'); return; }
+    const data = JSON.parse(raw);
+
+    let content = '';
+
+    // Prefer AI result for export
+    if (data.ai_result && !data.ai_result.raw) {
+        const ai   = data.ai_result;
+        const mode = data.analysis_mode || 'structured';
+        content = buildExportText(ai, mode, data.filename);
+    } else {
+        const keeps = (data.matches || []).filter(m => m.action === 'keep');
+        content = `# PaperCore 提取结果\n文件：${data.filename || ''}\n\n` +
+            keeps.map(m => `## ${m.description}\n${m.snippet}`).join('\n\n---\n\n');
+    }
+
+    showInlineLoading('正在生成导出文件...');
+    fetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, format })
+    })
+    .then(r => r.json())
+    .then(res => {
+        hideInlineLoading();
+        if (res.code === 200) {
+            window.location.href = res.data.download_url;
+        } else {
+            showResultError('导出失败：' + res.msg);
+        }
+    })
+    .catch(e => { hideInlineLoading(); showResultError('导出失败：' + e.message); });
+}
+
+function buildExportText(ai, mode, filename) {
+    const lines = [`# PaperCore 分析报告`, `文件：${filename || ''}`, `模式：${MODE_LABELS[mode] || mode}`, ''];
+
+    if (mode === 'quick') {
+        lines.push('## 研究问题', ai.research_question || '', '', '## 核心方法', ai.core_method || '', '', '## 主要结论', ai.conclusion || '');
+    } else if (mode === 'structured') {
+        lines.push('## 研究问题', ai.research_question || '', '', '## 方法路线', ai.core_method || '', '',
+            '## 关键公式', ...(ai.key_formulas || []).map(f => '- ' + f), '',
+            '## 实验数据', ai.experimental_data || '', '', '## 主要结论', ai.conclusion || '', '',
+            '## 创新贡献', ...(ai.innovations || []).map(i => '- ' + i), '',
+            '## 风险问题', ...(ai.potential_risks || []).map(r => '- ' + r), '',
+            '## 建议修改', ...(ai.improvement_suggestions || []).map(s => '- ' + s));
+    } else if (mode === 'formula') {
+        lines.push('## 核心公式', ...(ai.formulas || []).map(f => `- **${f.name}**：${f.expression}（${f.meaning}）`), '',
+            '## 变量定义', ...(ai.variables || []).map(v => `- ${v.symbol}：${v.definition}`), '',
+            '## 实验设置', ai.experiment_setup || '', '', '## 关键结果', ...(ai.key_results || []).map(r => '- ' + r));
+    } else if (mode === 'defense') {
+        lines.push('## 研究背景', ai.background || '', '',
+            '## 核心创新点', ...(ai.innovations || []).map(i => '- ' + i), '',
+            '## 实验亮点', ai.highlights || '', '',
+            '## 预期问答', ...(ai.qa_pairs || []).map(qa => `**Q：${qa.q || qa.question}**\nA：${qa.a || qa.answer}`));
+    }
+
+    return lines.join('\n');
+}
+</script>
+</body>
+</html>

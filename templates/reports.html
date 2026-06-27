@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>结构化报告 · PaperCore AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PaperCore</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item" href="/"><span class="nav-icon">⊞</span><span class="nav-text">工作台</span></a>
+            <a class="nav-item" href="/documents"><span class="nav-icon">☰</span><span class="nav-text">我的文档</span></a>
+            <a class="nav-item" href="/history"><span class="nav-icon">◷</span><span class="nav-text">分析历史</span></a>
+            <a class="nav-item active" href="/reports"><span class="nav-icon">⊡</span><span class="nav-text">结构化报告</span></a>
+            <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span><span class="nav-text">设置</span></a>
+            <a class="nav-item" href="/about" target="_blank" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:14px"><span class="nav-icon" style="color:var(--color-accent)">✦</span><span class="nav-text">关于我们</span></a>
+        </nav>
+        <div class="sidebar-status">
+            <div class="status-dot running"></div>
+            <div class="status-info">
+                <span class="status-label">本地运行中</span>
+                <span class="status-desc">所有数据仅在本地处理</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-area">
+        <div class="topbar">
+            <div class="result-topbar-left"><span class="topbar-title">结构化报告</span></div>
+            <div class="status-badges">
+                <span class="badge">本地模式</span>
+                <span class="badge">数据不上云</span>
+                <span class="badge badge-green">隐私保护中</span>
+            </div>
+        </div>
+
+        <div class="result-content">
+            <div class="history-header">
+                <div class="history-header-text">
+                    <h2 class="section-title">结构化报告</h2>
+                    <p class="history-subtitle">基于分析历史，一键导出 Markdown / TXT 结构化报告 · 全程本地生成</p>
+                </div>
+                <button class="btn btn-secondary" id="exportAllBtn" style="display:none">导出全部（MD）</button>
+            </div>
+
+            <div id="reportList" class="history-list"></div>
+
+            <div id="reportEmpty" class="history-empty" style="display:none">
+                <div class="history-empty-icon">⊡</div>
+                <p class="history-empty-text">还没有可导出的报告</p>
+                <p class="history-empty-hint">先在工作台完成一次论文分析，这里就能导出结构化报告</p>
+                <a href="/" class="btn btn-primary">前往工作台</a>
+            </div>
+
+            <div id="reportError" class="result-error" style="display:none"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+const MODE_LABELS = { structured: '结构化理解', quick: '快速摘要', defense: '答辩汇报' };
+const ENGINE_LABELS = { v4pro: '✨ v4pro（高级）', deepseek: '☁ DeepSeek（云端）', ollama: '🖥 本地大模型' };
+let __records = [];
+
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadReports() {
+    const listEl = document.getElementById('reportList');
+    const emptyEl = document.getElementById('reportEmpty');
+    const allBtn = document.getElementById('exportAllBtn');
+    const errEl = document.getElementById('reportError');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch('/api/history');
+        const json = await res.json();
+        __records = (json && json.data) || [];
+        listEl.innerHTML = '';
+        if (__records.length === 0) {
+            emptyEl.style.display = 'block'; allBtn.style.display = 'none'; return;
+        }
+        emptyEl.style.display = 'none';
+        allBtn.style.display = 'inline-block';
+        __records.forEach(r => listEl.appendChild(buildCard(r)));
+    } catch (e) {
+        errEl.textContent = '报告列表加载失败：' + e.message;
+        errEl.style.display = 'block';
+    }
+}
+
+function buildCard(r) {
+    const div = document.createElement('div');
+    div.className = 'history-card';
+    const engine = r.ai_engine_used && ENGINE_LABELS[r.ai_engine_used]
+        ? ENGINE_LABELS[r.ai_engine_used] : '本地规则 + 算法';
+    div.innerHTML = `
+        <div class="history-card-main">
+            <div class="history-card-title" title="${esc(r.filename)}">${esc(r.filename)}</div>
+            <div class="history-card-meta">
+                <span class="hc-time">${esc(r.time_str)}</span>
+                <span class="hc-badge">${esc(MODE_LABELS[r.analysis_mode] || r.analysis_mode)}</span>
+                <span class="hc-engine">${esc(engine)}</span>
+            </div>
+            <div class="history-card-stats">
+                <span><strong>${(r.text_length || 0).toLocaleString()}</strong> 字</span>
+                <span><strong>${r.keep_count || 0}</strong> 核心命中</span>
+                <span><strong>${r.match_count || 0}</strong> 总匹配</span>
+            </div>
+        </div>
+        <div class="history-card-actions">
+            <a class="btn btn-primary" href="/api/history/${encodeURIComponent(r.id)}/report?format=md">导出 MD</a>
+            <a class="btn btn-secondary" href="/api/history/${encodeURIComponent(r.id)}/report?format=txt">导出 TXT</a>
+        </div>`;
+    return div;
+}
+
+// 导出全部：逐条触发下载（带间隔，避免浏览器拦截）
+document.getElementById('exportAllBtn').addEventListener('click', () => {
+    __records.forEach((r, i) => {
+        setTimeout(() => {
+            const a = document.createElement('a');
+            a.href = `/api/history/${encodeURIComponent(r.id)}/report?format=md`;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        }, i * 400);
+    });
+});
+
+loadReports();
+</script>
+</body>
+</html>

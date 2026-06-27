@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析历史 · PaperCore AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- 左侧导航栏（与结果页一致；当前页高亮「分析历史」） -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PaperCore</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item" href="/">
+                <span class="nav-icon">⊞</span><span class="nav-text">工作台</span>
+            </a>
+            <a class="nav-item" href="/documents">
+                <span class="nav-icon">☰</span><span class="nav-text">我的文档</span>
+            </a>
+            <a class="nav-item active" href="/history">
+                <span class="nav-icon">◷</span><span class="nav-text">分析历史</span>
+            </a>
+            <a class="nav-item" href="/reports">
+                <span class="nav-icon">⊡</span><span class="nav-text">结构化报告</span>
+            </a>
+            <a class="nav-item" href="/settings">
+                <span class="nav-icon">⚙</span><span class="nav-text">设置</span>
+            </a>
+            <a class="nav-item" href="/about" target="_blank" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:14px">
+                <span class="nav-icon" style="color:var(--color-accent)">✦</span><span class="nav-text">关于我们</span>
+            </a>
+        </nav>
+        <div class="sidebar-status">
+            <div class="status-dot running"></div>
+            <div class="status-info">
+                <span class="status-label">本地运行中</span>
+                <span class="status-desc">所有数据仅在本地处理</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-area">
+
+        <div class="topbar">
+            <div class="result-topbar-left">
+                <span class="topbar-title">分析历史</span>
+            </div>
+            <div class="status-badges">
+                <span class="badge">本地模式</span>
+                <span class="badge">数据不上云</span>
+                <span class="badge badge-green">隐私保护中</span>
+            </div>
+        </div>
+
+        <div class="result-content">
+
+            <div class="history-header">
+                <div class="history-header-text">
+                    <h2 class="section-title">分析历史</h2>
+                    <p class="history-subtitle">所有记录仅存在本机 · 不上传云端 · 可随时一键清空</p>
+                </div>
+                <button class="btn btn-secondary" id="clearBtn" style="display:none">清空历史</button>
+            </div>
+
+            <div id="historyList" class="history-list"></div>
+
+            <!-- 空态 -->
+            <div id="historyEmpty" class="history-empty" style="display:none">
+                <div class="history-empty-icon">◷</div>
+                <p class="history-empty-text">还没有分析记录</p>
+                <p class="history-empty-hint">去工作台上传一篇论文，分析结果会自动留在这里</p>
+                <a href="/" class="btn btn-primary">前往工作台</a>
+            </div>
+
+            <div id="historyError" class="result-error" style="display:none"></div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+const MODE_LABELS = { structured: '结构化理解', quick: '快速摘要', defense: '答辩汇报' };
+const ENGINE_LABELS = { v4pro: '✨ v4pro（高级）', deepseek: '☁ DeepSeek（云端）', ollama: '🖥 本地大模型' };
+
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+async function loadHistory() {
+    const listEl  = document.getElementById('historyList');
+    const emptyEl = document.getElementById('historyEmpty');
+    const clearEl = document.getElementById('clearBtn');
+    const errEl   = document.getElementById('historyError');
+    errEl.style.display = 'none';
+    try {
+        const res = await fetch('/api/history');
+        const json = await res.json();
+        const records = (json && json.data) || [];
+        listEl.innerHTML = '';
+        if (records.length === 0) {
+            emptyEl.style.display = 'block';
+            clearEl.style.display = 'none';
+            return;
+        }
+        emptyEl.style.display = 'none';
+        clearEl.style.display = 'inline-block';
+        records.forEach(r => listEl.appendChild(buildCard(r)));
+    } catch (e) {
+        errEl.textContent = '历史加载失败：' + e.message;
+        errEl.style.display = 'block';
+    }
+}
+
+function buildCard(r) {
+    const div = document.createElement('div');
+    div.className = 'history-card';
+    const engine = r.ai_engine_used && ENGINE_LABELS[r.ai_engine_used]
+        ? ENGINE_LABELS[r.ai_engine_used] : '本地规则 + 算法';
+    const sal = (r.salience_avg != null) ? (Math.round(r.salience_avg * 100) + '%') : '—';
+    div.innerHTML = `
+        <div class="history-card-main">
+            <div class="history-card-title" title="${esc(r.filename)}">${esc(r.filename)}</div>
+            <div class="history-card-meta">
+                <span class="hc-time">${esc(r.time_str)}</span>
+                <span class="hc-badge">${esc(MODE_LABELS[r.analysis_mode] || r.analysis_mode)}</span>
+                <span class="hc-engine">${esc(engine)}</span>
+            </div>
+            <div class="history-card-stats">
+                <span><strong>${(r.text_length || 0).toLocaleString()}</strong> 字</span>
+                <span><strong>${r.keep_count || 0}</strong> 核心命中</span>
+                <span><strong>${r.match_count || 0}</strong> 总匹配</span>
+                <span>平均显著度 <strong>${sal}</strong></span>
+            </div>
+        </div>
+        <div class="history-card-actions">
+            <button class="btn btn-primary hc-view">查看</button>
+            <button class="btn btn-link hc-del">删除</button>
+        </div>`;
+    div.querySelector('.hc-view').addEventListener('click', () => viewRecord(r.id));
+    div.querySelector('.hc-del').addEventListener('click', () => deleteRecord(r.id, div));
+    return div;
+}
+
+// 回看：取完整结果 → 塞回 sessionStorage（与上传同一约定）→ 跳结果页重渲染
+async function viewRecord(id) {
+    try {
+        const res = await fetch('/api/history/' + encodeURIComponent(id));
+        if (!res.ok) throw new Error('记录不存在或已删除');
+        const json = await res.json();
+        sessionStorage.setItem('uploadResult', JSON.stringify(json.data));
+        window.location.href = '/result';
+    } catch (e) {
+        const errEl = document.getElementById('historyError');
+        errEl.textContent = '打开失败：' + e.message;
+        errEl.style.display = 'block';
+    }
+}
+
+async function deleteRecord(id, cardEl) {
+    if (!confirm('确认删除这条分析记录？此操作不可撤销。')) return;
+    try {
+        const res = await fetch('/api/history/' + encodeURIComponent(id), { method: 'DELETE' });
+        if (!res.ok && res.status !== 404) throw new Error('删除失败');
+        cardEl.remove();
+        if (document.querySelectorAll('.history-card').length === 0) loadHistory();
+    } catch (e) {
+        const errEl = document.getElementById('historyError');
+        errEl.textContent = '删除失败：' + e.message;
+        errEl.style.display = 'block';
+    }
+}
+
+document.getElementById('clearBtn').addEventListener('click', async () => {
+    if (!confirm('确认清空全部分析历史？此操作不可撤销。')) return;
+    try {
+        await fetch('/api/history', { method: 'DELETE' });
+        loadHistory();
+    } catch (e) {
+        const errEl = document.getElementById('historyError');
+        errEl.textContent = '清空失败：' + e.message;
+        errEl.style.display = 'block';
+    }
+});
+
+loadHistory();
+</script>
+</body>
+</html>

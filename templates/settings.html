@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 · PaperCore AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PaperCore</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item" href="/"><span class="nav-icon">⊞</span><span class="nav-text">工作台</span></a>
+            <a class="nav-item" href="/documents"><span class="nav-icon">☰</span><span class="nav-text">我的文档</span></a>
+            <a class="nav-item" href="/history"><span class="nav-icon">◷</span><span class="nav-text">分析历史</span></a>
+            <a class="nav-item" href="/reports"><span class="nav-icon">⊡</span><span class="nav-text">结构化报告</span></a>
+            <a class="nav-item active" href="/settings"><span class="nav-icon">⚙</span><span class="nav-text">设置</span></a>
+            <a class="nav-item" href="/about" target="_blank" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:14px"><span class="nav-icon" style="color:var(--color-accent)">✦</span><span class="nav-text">关于我们</span></a>
+        </nav>
+        <div class="sidebar-status">
+            <div class="status-dot running"></div>
+            <div class="status-info">
+                <span class="status-label">本地运行中</span>
+                <span class="status-desc">所有数据仅在本地处理</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-area">
+        <div class="topbar">
+            <div class="result-topbar-left"><span class="topbar-title">系统设置</span></div>
+            <div class="status-badges">
+                <span class="badge">本地模式</span>
+                <span class="badge">数据不上云</span>
+                <span class="badge badge-green">隐私保护中</span>
+            </div>
+        </div>
+
+        <div class="result-content">
+            <div class="history-header">
+                <div class="history-header-text">
+                    <h2 class="section-title">系统设置</h2>
+                    <p class="history-subtitle">当前为只读配置 · 实时反映后端运行状态</p>
+                </div>
+            </div>
+
+            <div class="settings-list">
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">界面语言 / Language</span>
+                        <span class="settings-desc">切换界面文案中 / 英（分析内容保持中文）</span>
+                    </div>
+                    <span class="lang-seg" id="langSeg">
+                        <button type="button" data-lang="zh" id="langZh">中文</button>
+                        <button type="button" data-lang="en" id="langEn">English</button>
+                    </span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">本地模式</span>
+                        <span class="settings-desc">解析与规则提取均在本地运行</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--on">开启</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">数据不上云</span>
+                        <span class="settings-desc">文件与文本内容不发送至远程服务器</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--on">开启</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">扫描件 OCR</span>
+                        <span class="settings-desc">无文字层 PDF 的本地 OCR 兜底（RapidOCR，不出网）</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--off" id="setOCR">检测中…</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">本地大模型（Ollama）</span>
+                        <span class="settings-desc" id="setOllamaDesc">本机 Ollama 深度分析，纯本地不出网</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--off" id="setOllama">检测中…</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">云端 API Key</span>
+                        <span class="settings-desc">DeepSeek 云端 API 密钥（可选，不填则走本地）</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--off" id="setAPIKey">检测中…</span>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-left">
+                        <span class="settings-label">v4pro 高级模式 <span class="local-ai-badge v4pro-badge">PRO</span></span>
+                        <span class="settings-desc" id="setV4ProDesc">资深评审视角的深度分析 · 5 小时滚动配额，最多 5 次</span>
+                    </div>
+                    <span class="settings-toggle settings-toggle--off" id="setV4Pro">检测中…</span>
+                </div>
+            </div>
+
+            <div id="settingsError" class="result-error" style="display:none"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+// 界面语言段控件：高亮当前语言 + 点击切换（切换由 i18n.js 的 setPaperCoreLang 处理：存 localStorage + reload）
+(function () {
+    var cur = localStorage.getItem('papercore_lang') || 'zh';
+    var zh = document.getElementById('langZh'), en = document.getElementById('langEn');
+    if (zh && en) {
+        zh.classList.toggle('active', cur === 'zh');
+        en.classList.toggle('active', cur === 'en');
+        zh.addEventListener('click', function () { if (cur !== 'zh' && window.setPaperCoreLang) window.setPaperCoreLang('zh'); });
+        en.addEventListener('click', function () { if (cur !== 'en' && window.setPaperCoreLang) window.setPaperCoreLang('en'); });
+    }
+})();
+function setToggle(el, on, onText, offText) {
+    if (!el) return;
+    el.textContent = on ? (onText || '可用') : (offText || '未配置');
+    el.classList.toggle('settings-toggle--on', !!on);
+    el.classList.toggle('settings-toggle--off', !on);
+}
+(async () => {
+    try {
+        const res = await fetch('/api/status');
+        const d = (await res.json()).data || {};
+        setToggle(document.getElementById('setOCR'), d.ocr_available, '可用', '不可用');
+        const ollamaOn = !!d.ollama_available;
+        setToggle(document.getElementById('setOllama'), ollamaOn, '可用', '未检测到');
+        if (ollamaOn && d.ollama_model) {
+            const desc = document.getElementById('setOllamaDesc');
+            if (desc) desc.textContent = `本机 Ollama（${d.ollama_model}）深度分析，纯本地不出网`;
+        }
+        setToggle(document.getElementById('setAPIKey'), d.api_key_configured, '已配置', '未配置');
+
+        // v4pro：可用且未锁→显剩余次数；锁定→显冷却；不可用→未配置 Key
+        const v4El = document.getElementById('setV4Pro');
+        const v4Desc = document.getElementById('setV4ProDesc');
+        const q = d.v4pro_quota || {};
+        if (!d.v4pro_available) {
+            setToggle(v4El, false, '', '需配置 Key');
+        } else if (q.can_use) {
+            setToggle(v4El, true, `剩余 ${q.remaining}/${q.limit}`, '');
+        } else {
+            const sec = Math.max(0, Math.floor((q.locked_until || 0) - Date.now() / 1000));
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+            setToggle(v4El, false, '', '已锁定');
+            if (v4Desc) v4Desc.textContent = `额度已用尽 · ${h} 小时 ${m} 分钟后重置（刷新无效）`;
+        }
+    } catch (e) {
+        const err = document.getElementById('settingsError');
+        err.textContent = '状态获取失败：' + e.message;
+        err.style.display = 'block';
+    }
+})();
+</script>
+</body>
+</html>

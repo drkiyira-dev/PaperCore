@@ -1,0 +1,111 @@
+/* =============================================================================
+ * theme-warm.css —— PaperCore 暖色学术风「换肤起步草稿」
+ * =============================================================================
+ * 用途：A 层（Token 重定义）的起点。详见《给Codex的UI打磨说明.md》§2 / §3。
+ *
+ * 怎么用（Codex）：
+ *   方式一(推荐)：用下面的 :root 块替换 style.css 顶部现有的 :root 块
+ *                （style.css 第 1~44 行那段 Design Tokens）。变量名与原文件
+ *                **完全一致**，是 drop-in 替换，组件 CSS 不用改就会整体变暖。
+ *   方式二：在 style.css 之后再引入本文件（HTML 里 link 放在 style.css 之后），
+ *           用层叠覆盖。能快速预览，但留着两套变量不利维护，最终仍建议合并回
+ *           style.css。
+ *
+ * ⚠️ 只改变量不够：style.css 里曾有数十处硬编码冷蓝/亮绿颜色绕过变量。
+ *    换肤后必须做
+ *    B 层清扫（见说明文档 §3 的 grep 命令），把它们收敛到这些变量。
+ *
+ * 数值为「方向草稿」，保持暖色低饱和的整体关系即可，具体色值 Codex 可微调。
+ * ============================================================================= */
+
+:root {
+    /* —— 布局尺寸（沿用原值，未改） —— */
+    --sidebar-width: 220px;
+    --topbar-height: 56px;
+
+    /* —— 侧栏：浅暖纸面（L1 调亮核心）—— */
+    --color-sidebar-bg:          #F4EFE6;
+    --color-sidebar-text:        #6B5B47;
+    --color-sidebar-active-bg:   rgba(200, 118, 42, 0.14);
+    --color-sidebar-active-text: #B0641F;
+    --color-sidebar-border:      #E8E1D5;
+
+    /* —— 背景层次：近纯白微暖（浅 → 深）—— */
+    --color-bg:             #FCFBF8;   /* 主背景（近纯白微暖）   */
+    --color-surface:        #FFFFFF;   /* 卡片/面板纯白          */
+    --color-surface-sunken: #F5F2EC;   /* 凹陷区/代码块底        */
+    --color-border:         #ECE6DC;   /* 暖灰边框               */
+
+    /* —— 文字：深棕三级 —— */
+    --color-text:           #2C1F0E;   /* 主文字（深棕）         */
+    --color-text-secondary: #6B5B47;   /* 次级                   */
+    --color-text-muted:     #9C8C76;   /* 弱化/提示（别再浅了，保可读）*/
+
+    /* —— 强调色：焦糖橙 —— */
+    --color-accent:        #C8762A;
+    --color-accent-hover:  #B0641F;
+    --color-accent-light:  #F6E9D8;    /* 橙浅底：hover 背景/标签底 */
+
+    /* —— 语义色：暖化，避免刺眼的纯绿纯红 —— */
+    --color-green:        #5C7A3D;     /* 橄榄绿：保留/通过 */
+    --color-green-light:  #EEF1E4;
+    --color-orange:       #C8762A;     /* 待审查：复用强调橙 */
+    --color-orange-light: #FBF0DD;
+    --color-red:          #B5482F;     /* 砖红：删除/警告 */
+    --color-red-light:    #F6E2DB;
+
+    /* —— 阴影：偏暖、更柔（学术=轻投影，不要重黑影）—— */
+    --shadow-sm: 0 1px 2px rgba(80, 60, 30, 0.06);
+    --shadow-md: 0 4px 14px rgba(80, 60, 30, 0.08);
+    --shadow-lg: 0 10px 30px rgba(80, 60, 30, 0.12);
+
+    /* —— 圆角 / 过渡（沿用原值，未改）—— */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --transition: 0.18s ease;
+
+    /* —— 字体（新增；接入方式见下方 @font-face 注释）—— */
+    --font-serif:    "Playfair Display", "Noto Serif SC", "Songti SC", serif;     /* 标题 */
+    --font-body:     "EB Garamond", "Noto Serif SC", "Songti SC", Georgia, serif; /* 正文/数字 */
+    --font-sans-cjk: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;/* 需无衬线时的中文兜底 */
+}
+
+/* =============================================================================
+ * 字体自托管（C 层）—— 重要：本项目主打 local-first / 隐私，请勿用 Google CDN。
+ * 把字体 woff2 放进 static/fonts/ 后，取消下面注释并按实际文件名填写。
+ * 中文字体很大，建议子集化，或中文正文退用系统宋体、仅西文标题用 Playfair。
+ * ---------------------------------------------------------------------------
+ * @font-face {
+ *     font-family: "Playfair Display";
+ *     src: url("../fonts/PlayfairDisplay-Bold.woff2") format("woff2");
+ *     font-weight: 700; font-style: normal; font-display: swap;
+ * }
+ * @font-face {
+ *     font-family: "EB Garamond";
+ *     src: url("../fonts/EBGaramond-Regular.woff2") format("woff2");
+ *     font-weight: 400; font-style: normal; font-display: swap;
+ * }
+ * @font-face {
+ *     font-family: "EB Garamond";
+ *     src: url("../fonts/EBGaramond-Italic.woff2") format("woff2");
+ *     font-weight: 400; font-style: italic; font-display: swap;
+ * }
+ * @font-face {
+ *     font-family: "Noto Serif SC";
+ *     src: url("../fonts/NotoSerifSC-Regular.woff2") format("woff2");
+ *     font-weight: 400; font-style: normal; font-display: swap;
+ * }
+ * ============================================================================= */
+
+/* =============================================================================
+ * 排版层级（C 层起步示意）—— 接入字体后，建议在 style.css 里这样落层级：
+ * 仅作方向，Codex 按实际组件调整。
+ * ---------------------------------------------------------------------------
+ * body              { font-family: var(--font-body); font-size: 15px; line-height: 1.7; }
+ * .hero-title       { font-family: var(--font-serif); font-weight: 700; letter-spacing: -0.01em; }
+ * .section-title,
+ * h2                { font-family: var(--font-serif); }      // 可配橙色短下划线做学术分隔
+ * h3                { font-family: var(--font-serif); font-weight: 600; }
+ * .hero-subtitle    { font-family: var(--font-body); font-style: italic; color: var(--color-text-secondary); }
+ * ============================================================================= */

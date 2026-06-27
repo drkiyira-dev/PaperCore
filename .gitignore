@@ -1,0 +1,34 @@
+.env
+__pycache__/
+*.pyc
+venv/
+uploads/
+outputs/
+data/
+.DS_Store
+.idea/
+*.log
+
+# 评测目录整体不公开（含版权论文 PDF 及从论文复制的金标准句子）
+eval/
+# 内部笔记
+字体接入清单.md
+# 打包文件
+*.zip
+
+# 内部清单（不进公开仓库）
+上传文件清单*.txt
+# LICENSE 暂不上传（用户决定赛后再定）
+LICENSE
+
+# 内部开发文档（给 Codex 的指令 / 答辩反馈 / 进度笔记，不进公开仓库）
+给Codex*.md
+PaperCore_答辩反馈与改进方向*.md
+progress.txt
+# 内部反思 / 进度笔记（不进公开仓库）
+PaperCore_复盘*.md
+PaperCore_进展与待办*.md
+# Claude Code 本地配置（不公开）
+.claude/
+# GitHub 二维码宣传图（可选，默认不进仓库）
+PaperCore_GitHub二维码*.png

@@ -1,0 +1,1452 @@
+"""
+PaperCore · 本地优先的论文核心内容提取系统 - Flask 主程序
+版本：2.0
+作者：朱厚臻（PaperCore 团队）
+日期：2026 年
+"""
+
+import os
+
+# ── 强制离线：本地优先工具绝不能因联网而卡死 ──────────────────────────────
+# docling 在 convert() 时会联网校验/拉取 HuggingFace 模型，且该调用没有超时。
+# 现场会场的 captive-portal WiFi（要点“同意”才放行那种）会劫持并挂起该请求，
+# 导致 docling 无限期卡住、整个上传请求挂死（答辩现场即为此症状）。
+# 在导入任何重型库之前强制离线：只用本地已缓存模型；缺失则立即报错并降级到
+# pdfplumber/PyPDF2，永不联网、永不挂死——同时让“断网可复现”名副其实。
+# 如确需联网下载模型，在启动前显式设 HF_HUB_OFFLINE=0 即可覆盖。
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+
+import json
+import time
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from docling.document_converter import DocumentConverter
+import pdfplumber
+import PyPDF2
+
+load_dotenv()
+
+from rules import match_rules, RULES
+from ai_engines import AIEngine, CloudAPI, OllamaAPI, V4ProAPI
+from utils import chunk_text
+import history  # 本地分析历史（local-first 持久化，见 history.py）
+import docnames  # 上传文件「原始中文名」映射（见 docnames.py）
+import report   # 结构化报告生成（报告中心 / 批量导出，见 report.py）
+import usage    # v4pro 高级模式滑动配额（见 usage.py）
+
+# docling 可选依赖，失败时降级到 pdfplumber。
+# 关键：关掉 docling 自带 OCR（do_ocr=False）——它对中文扫描件会吐乱码且非空，
+# 反而会挡住下游更准的 RapidOCR 兜底。这里让 docling 只负责「文字层结构化抽取」，
+# 扫描件交给后面的 RapidOCR（中文识别更可靠）。配置 API 不可用时回退默认构造。
+try:
+    from docling.document_converter import DocumentConverter as _DocConverter
+    try:
+        from docling.datamodel.pipeline_options import PdfPipelineOptions
+        from docling.document_converter import PdfFormatOption
+        from docling.datamodel.base_models import InputFormat
+        _po = PdfPipelineOptions(do_ocr=False)
+        _converter = _DocConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=_po)})
+    except Exception as _e2:
+        print(f"[docling] do_ocr=False 配置不可用，使用默认构造: {_e2}")
+        _converter = _DocConverter()
+    DOCLING_OK = True
+except Exception as _e:
+    print(f"[docling] 初始化失败，已跳过: {_e}")
+    _converter = None
+    DOCLING_OK = False
+
+# RapidOCR 可选依赖：用于扫描件 / 无文字层 PDF 的本地 OCR 兜底。
+# 纯本地 ONNX 推理，自带中英文模型，不联网、不调用云端——契合 local-first。
+# 引擎首次初始化较慢，故懒加载：仅在前几种文字层抽取全失败时才触发。
+_ocr_engine = None
+try:
+    import fitz  # PyMuPDF：把 PDF 页渲染成位图，喂给 OCR
+    from rapidocr_onnxruntime import RapidOCR as _RapidOCR
+    OCR_OK = True
+except Exception as _e:
+    print(f"[OCR] RapidOCR/PyMuPDF 不可用，扫描件 OCR 兜底已跳过: {_e}")
+    OCR_OK = False
+
+
+def _get_ocr_engine():
+    """懒加载 RapidOCR 引擎（首次调用才初始化，避免拖慢启动）。"""
+    global _ocr_engine
+    if _ocr_engine is None and OCR_OK:
+        print("[OCR] 首次初始化 RapidOCR 引擎...")
+        _ocr_engine = _RapidOCR()
+    return _ocr_engine
+
+
+def ocr_pdf(file_path, dpi=200, max_pages=30):
+    """
+    对扫描件 / 无文字层 PDF 做本地 OCR。
+    逐页用 PyMuPDF 渲染为位图 → RapidOCR 识别 → 拼接为纯文本。
+    全程本地 ONNX 推理，不出网；为控制时延，默认最多处理前 max_pages 页。
+    """
+    if not OCR_OK:
+        return ""
+    import numpy as np
+    from PIL import Image
+    import io
+    engine = _get_ocr_engine()
+    if engine is None:
+        return ""
+    parts = []
+    try:
+        doc = fitz.open(file_path)
+    except Exception as e:
+        print(f"[OCR] 打开 PDF 失败：{e}")
+        return ""
+    for i, page in enumerate(doc):
+        if i >= max_pages:
+            print(f"[OCR] 已达页数上限 {max_pages}，停止")
+            break
+        try:
+            pix = page.get_pixmap(dpi=dpi)
+            img = np.array(Image.open(io.BytesIO(pix.tobytes("png"))))
+            result, _elapse = engine(img)
+            if result:
+                # RapidOCR 返回 [[box, text, score], ...]，按识别顺序取文本
+                parts.append("\n".join(line[1] for line in result))
+        except Exception as e:
+            print(f"[OCR] 第 {i+1} 页识别失败：{e}")
+    doc.close()
+    text = "\n".join(parts)
+    print(f"[OCR] 识别完成，共 {len(parts)} 页有文本，总长度 {len(text)}")
+    return text
+
+# ==================== 分析模式 Prompt ====================
+
+ANALYSIS_PROMPTS = {
+    "quick": (
+        "你是专业的学术论文分析助手。请阅读以下论文内容，提取最关键的三要素。\n"
+        "严格返回JSON格式，不要添加任何markdown代码块或额外解释，直接输出JSON：\n"
+        '{{"research_question": "研究问题（2-3句）", "core_method": "核心方法（2-3句）", "conclusion": "主要结论（2-3句）"}}\n\n'
+        "论文内容：\n{text}"
+    ),
+    "structured": (
+        "你是专业的学术论文分析助手，擅长工科论文结构化理解。请深度分析以下论文，提取八维结构化信息。\n"
+        "严格返回JSON格式，不要添加任何markdown代码块或额外解释，直接输出JSON：\n"
+        '{{"research_question": "研究问题", "core_method": "核心方法（含方法路线）", '
+        '"key_formulas": ["公式描述1", "公式描述2"], '
+        '"experimental_data": "关键实验数据与对比结果", '
+        '"conclusion": "主要结论", "innovations": ["创新点1", "创新点2"], '
+        '"potential_risks": ["潜在局限或风险1", "潜在局限或风险2"], '
+        '"improvement_suggestions": ["建议修改方向1", "建议修改方向2"]}}\n\n'
+        "论文内容：\n{text}"
+    ),
+    "formula": (
+        "你是工科论文技术内容提取专家。请精确提取以下论文中的所有关键技术内容，保持数值精确性。\n"
+        "严格返回JSON格式，不要添加任何markdown代码块或额外解释，直接输出JSON：\n"
+        '{{"formulas": [{{"name": "公式名称", "expression": "公式表达式", "meaning": "物理/数学含义"}}], '
+        '"variables": [{{"symbol": "符号", "definition": "定义"}}], '
+        '"experiment_setup": "实验设置与参数", '
+        '"key_results": ["关键结果1（含数值）", "关键结果2（含数值）"]}}\n\n'
+        "论文内容：\n{text}"
+    ),
+    "defense": (
+        "你是学术答辩辅导专家。请为以下论文生成完整的答辩汇报材料，帮助答辩人做好准备。\n"
+        "严格返回JSON格式，不要添加任何markdown代码块或额外解释，直接输出JSON：\n"
+        '{{"background": "研究背景与动机（3-4句）", '
+        '"innovations": ["核心创新点1", "核心创新点2", "核心创新点3"], '
+        '"highlights": "实验亮点（含关键数据支撑）", '
+        '"qa_pairs": [{{"q": "可能被问到的问题", "a": "简要回答"}}]}}\n\n'
+        "论文内容：\n{text}"
+    ),
+}
+
+# ==================== 配置区 ====================
+
+app = Flask(__name__, static_url_path='/static')
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB上传限制
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+# 配置上传文件夹路径
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+OUTPUT_FOLDER = os.path.join(BASE_DIR, 'outputs')
+
+# 确保目录存在
+for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER]:
+    os.makedirs(folder, exist_ok=True)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+
+# 允许的文件扩展名
+ALLOWED_EXTENSIONS = {'pdf', 'docx', 'txt', 'md'}
+
+# 初始化组件
+ai_engine = AIEngine()
+
+
+# ==================== 工具函数 ====================
+
+def extract_sections(text):
+    """从论文文本中提取摘要/方法/结论等主要章节，返回 dict。"""
+    import re
+    sections = {}
+
+    # 章节标题前缀：允许"2 "/"2."/"2、"/"二、"/"III." 等编号（含 IEEE 罗马数字）
+    _NUM = r'(?:(?:[\d一二三四五六七八九十]+|[IVXLC]{1,6})\s*[\.、\s]?\s*)?'
+
+    def _grab(text, patterns, stop_patterns):
+        """匹配第一个命中的章节，截断到下一个大节。"""
+        for pat in patterns:
+            m = re.search(pat, text, re.IGNORECASE | re.MULTILINE)
+            if m:
+                chunk = m.group(1).strip()
+                if stop_patterns:
+                    stop_re = r'\n[ \t]*(?:' + '|'.join(stop_patterns) + r')'
+                    chunk = re.split(stop_re, chunk, maxsplit=1)[0]
+                return chunk.strip()
+        return None
+
+    # ── 摘要 ──────────────────────────────────────────────────────────────
+    v = _grab(text, [
+        r'(?:^|\n)[ \t]*' + _NUM + r'摘\s*要[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'Abstract[ \t]*\n([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'Abstract\s*[—–\-][ \t]*([\s\S]{30,})',  # IEEE "Abstract—..."
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:项目概述|研究背景|背景与意义)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)#{1,3}\s*(?:Abstract|摘要)[^\n]*\n([\s\S]{30,})',
+    ], [r'关键词', r'Keywords?', r'Index\s*Terms?', r'引言', r'Introduction', r'\d+\s*[\.、]', r'一、'])
+    if v: sections['abstract'] = v[:600]
+
+    # ── 关键词（单行；含 IEEE "Index Terms—"）──────────────────────────────
+    m = re.search(r'(?:关键词|关键字|Keywords?|Index\s*Terms?)\s*[：:—–\-]\s*([^\n]{5,300})', text, re.IGNORECASE)
+    if m: sections['keywords'] = m.group(1).strip()
+
+    # ── 研究方法 ───────────────────────────────────────────────────────────
+    v = _grab(text, [
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:研究方法|本文方法|所提方法|资料与方法|材料与方法|对象与方法|方\s*法)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Method(?:ology)?|Approach|Algorithm)[ \t]*\n([\s\S]{30,})',
+        # IEEE/工科英文论文的方法章节常不叫 Method，而是 System Model / Problem Formulation / Proposed … 等
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:(?:System|Signal|Channel|Network)\s+(?:Model|Architecture)|Problem\s+(?:Formulation|Statement|Definition)|Proposed\s+[A-Za-z][\w\- ]{0,40}|Preliminaries|Design\s+of\s+\w+)[ \t]*\n([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:技术方案|系统设计|实现方案|系统模型|问题建模|算法设计)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Method|Research Method|研究方法)[^\n]*\n([\s\S]{30,})',
+    ], [r'实验', r'仿真', r'结论', r'总结', r'Experiment', r'Result', r'Conclusion', r'\d+\s*[\.、]'])
+    if v: sections['method'] = v[:500]
+
+    # ── 实验/结果 ──────────────────────────────────────────────────────────
+    v = _grab(text, [
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:实\s*验(?:结果|与分析)?|仿\s*真(?:实验)?|结\s*果(?:与分析|与讨论)?)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Experiment(?:al\s*Results?)?|Simulation(?:\s*Results?)?|Results?)[ \t]*\n([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:测试结果|验证实验|效果评估)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Experiment|Results|实验结果)[^\n]*\n([\s\S]{30,})',
+    ], [r'结论', r'总结', r'讨论', r'Conclusion', r'Discussion', r'\d+\s*[\.、]'])
+    if v: sections['experiment'] = v[:500]
+
+    # ── 结论 ───────────────────────────────────────────────────────────────
+    v = _grab(text, [
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:结\s*论|结\s*语|结\s*束\s*语|总\s*结|小\s*结)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Conclusion|CONCLUSION|Summary)[ \t]*\n([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:总结与展望|项目总结|预期成果)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Conclusion|结论)[^\n]*\n([\s\S]{30,})',
+    ], [r'参考文献', r'致\s*谢', r'References?', r'Acknowledg'])
+    if v: sections['conclusion'] = v[:600]
+
+    return sections
+
+
+# ==================== 四维评分档案：温和 / 严格两套，各自独立维护 ====================
+# 评分尺度由用户在分析时选择（score_mode）。两套词库刻意分开列、不是子集关系：
+#   温和档——词全、系数松，内容扎实就容易拿高分（鼓励作者、给作品打气）
+#   严格档——独立精选「强信号」词、系数低、数据更看重结论定量（审稿视角，分数普遍压在 55~72）
+# 以后两套可各自迭代：温和档加宽松信号词、严格档加「硬」信号词，互不影响。
+# 结构维度（章节识别）是客观的，两档共用、不分松紧。
+
+_INNOVATION_KW_TEMPERATE = [
+    # 中文：提出/设计/贡献类
+    "本文提出", "本文设计", "本文构建", "本文实现", "本文开发", "本研究提出",
+    "提出了一种", "设计了一种", "首次", "本文首次", "创新", "创新性", "创造性",
+    "新型", "新方法", "新框架", "新模型", "全新", "改进了", "优于", "领先",
+    "超越", "最优", "突破", "主要贡献", "核心贡献", "关键贡献", "核心创新",
+    "关键创新", "创新点", "贡献如下", "主要工作", "独特", "有效改善",
+    "显著提升", "大幅提升", "填补空白",
+    # 英文：propose / contribution / SOTA 类
+    "we propose", "we present", "we introduce", "we develop", "we design",
+    "propose a novel", "novel", "contribution", "key contribution",
+    "main contribution", "our contributions", "key innovation",
+    "outperform", "significantly outperform", "surpass", "superior to",
+    "state-of-the-art", "sota", "achieve state-of-the-art",
+    "to the best of our knowledge", "first to", "improvement over",
+    "breakthrough", "our method",
+]
+
+_METHOD_KW_TEMPERATE = [
+    # 中文：流程/结构
+    "步骤", "流程", "算法", "框架", "模型", "网络", "模块", "结构", "架构",
+    "参数", "超参数", "训练", "优化", "损失", "损失函数", "函数", "公式",
+    "实验设置", "数据集", "对比", "消融", "基线",
+    # 中文：深度学习/工程术语
+    "卷积", "池化", "注意力", "多头注意力", "自注意力", "编码器", "解码器",
+    "嵌入", "词向量", "正则化", "梯度", "反向传播", "梯度下降", "学习率",
+    "批大小", "迭代", "收敛", "激活函数", "归一化", "残差", "预训练", "微调",
+    "评价指标", "准确率", "召回率", "精确率", "交叉验证", "端到端",
+    "特征提取", "特征融合", "采样", "权重", "阈值", "相似度",
+    # 英文等价词
+    "architecture", "framework", "model", "network", "layer", "module",
+    "parameter", "hyperparameter", "training", "optimizer", "loss",
+    "function", "dataset", "ablation", "comparison", "epoch", "accuracy",
+    "proposed", "approach", "algorithm", "attention", "convolution",
+    "pooling", "transformer", "self-attention", "multi-head", "encoder",
+    "decoder", "embedding", "regularization", "gradient", "backpropagation",
+    "learning rate", "batch", "normalization", "residual", "pretrain",
+    "fine-tune", "metric", "precision", "recall", "benchmark",
+    "convergence", "activation", "softmax", "dropout", "feature",
+    "representation", "end-to-end",
+]
+
+# 严格档·创新：只认「明确、可验证的强创新声明」，剔除 propose/present/novel 这类谁都写得出的泛词
+_INNOVATION_KW_STRICT = [
+    "本文提出", "提出了一种", "本文首次", "首次提出", "首次实现", "国内外首次",
+    "主要贡献", "核心贡献", "关键贡献", "核心创新", "关键创新", "创新点",
+    "突破", "重大突破", "填补空白", "填补了空白", "显著优于", "大幅领先", "远超",
+    "we propose", "we propose a novel", "novel", "main contribution",
+    "key contribution", "key innovation", "our contribution", "our contributions",
+    "outperform", "significantly outperform", "surpass", "superior to",
+    "state-of-the-art", "to the best of our knowledge", "first to",
+    "for the first time",
+]
+
+# 严格档·方法：只认「方法完整性的实质标志」——算法/超参/数据集/消融/基线/复杂度/收敛等，
+# 剔除 model/network/layer/function/feature 这类任何技术论文都会出现的通用术语
+_METHOD_KW_STRICT = [
+    "算法", "算法流程", "伪代码", "框架", "训练", "优化", "损失函数", "目标函数",
+    "梯度", "学习率", "批大小", "超参数", "参数设置", "数据集", "消融", "消融实验",
+    "基线", "对比实验", "评价指标", "准确率", "召回率", "精确率",
+    "时间复杂度", "空间复杂度", "复杂度", "收敛", "收敛性", "交叉验证",
+    "实验设置", "正则化", "归一化",
+    "algorithm", "framework", "training", "optimizer", "loss function",
+    "objective function", "gradient", "learning rate", "batch size",
+    "hyperparameter", "dataset", "ablation", "baseline", "evaluation metric",
+    "accuracy", "precision", "recall", "complexity", "convergence",
+    "cross-validation", "experimental setup",
+]
+
+SCORE_PROFILES = {
+    "temperate": {
+        "label": "温和",
+        "innovation_kw": _INNOVATION_KW_TEMPERATE,
+        "innovation_coef": 4,
+        "method_kw": _METHOD_KW_TEMPERATE,
+        "method_coef": 2,
+        "data_expr": 12, "data_conc": 8, "data_cross": 5,
+        "num_strict": False,
+    },
+    "strict": {
+        "label": "严格",
+        "innovation_kw": _INNOVATION_KW_STRICT,
+        "innovation_coef": 2,
+        "method_kw": _METHOD_KW_STRICT,
+        "method_coef": 1.1,
+        "data_expr": 8, "data_conc": 8, "data_cross": 5,
+        "num_strict": True,  # 数据判定只认带单位/百分比/小数，裸整数不算量化指标
+    },
+}
+
+
+def analyze_paper_quality(text, sections, mode='temperate'):
+    """
+    本地自研算法：四维论文质量评分。
+    不依赖任何外部 API，全程本地计算。
+
+    返回格式：
+    {
+      "total": 0-100,
+      "dimensions": {
+        "structure":   {"score": 0-25, "max": 25, "label": "...", "detail": "...", "suggestions": [...]},
+        "innovation":  {...},
+        "data_support":{...},
+        "method":      {...},
+      },
+      "suggestions": ["全局建议1", ...]
+    }
+    """
+    import re
+
+    prof = SCORE_PROFILES.get(mode, SCORE_PROFILES["temperate"])
+    result = {"total": 0, "dimensions": {}, "suggestions": []}
+    _no_sections = not any(sections.values())
+
+    # ── 维度1：结构完整度（满分 25）──────────────────────────────────────
+    struct_fields = {
+        "abstract":   ("摘要",   8),
+        "keywords":   ("关键词", 4),
+        "method":     ("研究方法", 6),
+        "experiment": ("实验结果", 4),
+        "conclusion": ("结论",   3),
+    }
+    struct_score = 0
+    struct_missing = []
+    for field, (label, pts) in struct_fields.items():
+        if sections.get(field):
+            struct_score += pts
+        else:
+            struct_missing.append(label)
+    struct_suggestions = []
+    if struct_missing:
+        struct_suggestions.append(f"未检测到以下章节：{'、'.join(struct_missing)}，建议补充或规范章节标题（如'2 研究方法'、'4 实验结果'）")
+    if not sections.get("keywords"):
+        struct_suggestions.append("摘要后缺少关键词行，建议添加 3~6 个关键词")
+    struct_detail = ("章节结构未识别，基于全文评分" if _no_sections
+                     else f"检测到 {5 - len(struct_missing)}/5 个标准章节")
+
+    result["dimensions"]["structure"] = {
+        "score": struct_score, "max": 25,
+        "label": "结构完整度",
+        "detail": struct_detail,
+        "suggestions": struct_suggestions,
+    }
+
+    # ── 维度2：创新声明密度（满分 25）──────────────────────────────────
+    innovation_kw = prof["innovation_kw"]
+    innov_text = (sections.get("abstract", "") + " " + text).lower()
+    innov_hits = [kw for kw in innovation_kw if kw.lower() in innov_text]
+    innov_count = len(innov_hits)
+    innov_score = min(25, round(innov_count * prof["innovation_coef"]))
+    innov_suggestions = []
+    if innov_count == 0:
+        innov_suggestions.append("摘要和正文中未检测到明确的创新声明，建议在摘要中加入\"本文提出/设计/构建了...\"类句式")
+    elif innov_count < 2:
+        innov_suggestions.append("创新声明表述较少，建议在摘要及引言中至少出现 2 处明确的创新贡献描述")
+    innov_detail = f"检测到 {innov_count} 处创新声明关键词"
+
+    result["dimensions"]["innovation"] = {
+        "score": innov_score, "max": 25,
+        "label": "创新声明密度",
+        "detail": innov_detail,
+        "suggestions": innov_suggestions,
+    }
+
+    # ── 维度3：数据支撑度（满分 25）──────────────────────────────────────
+    # 判断结论段落是否含有数值/百分比与实验段落的数值是否有交叉
+    # 放宽数字判定：带单位的实测值（15 ms / 3 dB / 1.2 Gbps）、小数、2 位以上整数都算量化数据
+    _num_units = r'\d+\.?\d*\s*(?:%|ms|μs|ns|dB|dBm|bps|Mbps|Gbps|Hz|kHz|MHz|GHz|GB|MB|KB|fps|W|mW|x|×|倍|个百分点)|\d+\.\d+'
+    num_pattern = re.compile(_num_units if prof.get("num_strict") else _num_units + r'|\b\d{2,}\b')
+    conclusion_text = sections.get("conclusion", "") or text
+    experiment_text = text  # 量化数据常分散全文（含图表说明/各小节），不限"实验"那一段
+
+    conc_nums = set(num_pattern.findall(conclusion_text))
+    expr_nums = set(num_pattern.findall(experiment_text))
+    cross_nums = conc_nums & expr_nums
+
+    data_score = 0
+    data_suggestions = []
+    if expr_nums:
+        data_score += prof["data_expr"]   # 实验/正文有量化数据
+    if conc_nums:
+        data_score += prof["data_conc"]   # 结论也引用了具体数据
+    if cross_nums:
+        data_score += prof["data_cross"]  # 数据有交叉（结论引用了实验数字）
+
+    if not conc_nums:
+        data_suggestions.append("结论段落未检测到具体数值，建议用实验数据（如准确率、性能提升百分比）支撑结论")
+    if not expr_nums:
+        data_suggestions.append("实验章节未检测到量化数据，建议补充对比实验的具体指标数值")
+    if conc_nums and expr_nums and not cross_nums:
+        data_suggestions.append("结论中的数据与实验章节数据无交叉，建议确认结论是否直接引用了实验结果")
+
+    data_detail = f"正文检出 {len(expr_nums)} 处量化数据；结论含 {len(conc_nums)} 处（与实验交叉 {len(cross_nums)} 处）"
+
+    result["dimensions"]["data_support"] = {
+        "score": min(25, data_score), "max": 25,
+        "label": "数据支撑度",
+        "detail": data_detail,
+        "suggestions": data_suggestions,
+    }
+
+    # ── 维度4：方法描述完整性（满分 25）──────────────────────────────────
+    method_kw = prof["method_kw"]
+    # 方法词在全文找：方法描述常分散在 系统模型 / 所提方法 / 实验 各段，不限"方法"章节那一段
+    method_text = text
+    method_hits = [kw for kw in method_kw if kw.lower() in method_text.lower()]
+    method_count = len(method_hits)
+    method_score = min(25, round(method_count * prof["method_coef"]))
+    method_suggestions = []
+    if method_count < 3:
+        method_suggestions.append("方法描述较简略，建议补充：算法步骤/模型框架/超参数设置等内容")
+    if "消融" not in method_text and "ablation" not in method_text.lower():
+        method_suggestions.append("未检测到消融实验，建议增加消融分析以验证各模块的独立贡献")
+    if "baseline" not in method_text.lower() and "对比" not in method_text:
+        method_suggestions.append("未检测到基线对比，建议与同类方法进行对比实验并列出数值结果")
+    method_detail = f"检测到 {method_count} 个方法描述关键词"
+
+    result["dimensions"]["method"] = {
+        "score": method_score, "max": 25,
+        "label": "方法描述完整性",
+        "detail": method_detail,
+        "suggestions": method_suggestions,
+    }
+
+    # ── 汇总 ─────────────────────────────────────────────────────────────
+    total = (result["dimensions"]["structure"]["score"]
+             + result["dimensions"]["innovation"]["score"]
+             + result["dimensions"]["data_support"]["score"]
+             + result["dimensions"]["method"]["score"])
+    result["total"] = total
+
+    # 全局建议（按分数最低维度优先）
+    dims_sorted = sorted(result["dimensions"].values(), key=lambda d: d["score"] / d["max"])
+    for d in dims_sorted:
+        if d["suggestions"]:
+            result["suggestions"].extend(d["suggestions"][:1])  # 每维度最多取首条
+
+    return result
+
+
+def build_overview(quality_score, matches):
+    """生成「综合点评」——本地拼装的一段自然语言总评 + 重点建议（不调云）。
+
+    依据：四维体检分（总分/档位/最强最弱维度）+ 规则命中情况（核心条数/平均显著度）。
+    返回 {score, level, text, suggestions}，供结果页「综合点评」区块渲染。
+    """
+    total = quality_score.get("total", 0)
+    dims = quality_score.get("dimensions", {}) or {}
+
+    if total >= 85:
+        level = "优秀"
+    elif total >= 70:
+        level = "良好"
+    elif total >= 55:
+        level = "中等"
+    else:
+        level = "待改进"
+
+    # 最强 / 最弱维度（按得分率）
+    dim_list = [d for d in dims.values() if d.get("max")]
+    strongest = max(dim_list, key=lambda d: d["score"] / d["max"], default=None)
+    weakest = min(dim_list, key=lambda d: d["score"] / d["max"], default=None)
+
+    # 核心命中 + 平均显著度
+    keeps = [m for m in matches if m.get("action") == "keep"]
+    sal = [m.get("salience") for m in keeps if isinstance(m.get("salience"), (int, float))]
+    avg_sal = round(sum(sal) / len(sal) * 100) if sal else None
+
+    parts = [f"本文综合质量评分 {total}/100，整体评级「{level}」。"]
+    if strongest and weakest and strongest is not weakest:
+        parts.append(
+            f"四维体检中，「{strongest['label']}」表现最好（{strongest['score']}/{strongest['max']}），"
+            f"「{weakest['label']}」相对薄弱（{weakest['score']}/{weakest['max']}）。"
+        )
+    if keeps:
+        seg = f"系统共提取 {len(keeps)} 条核心内容"
+        if avg_sal is not None:
+            seg += f"，平均显著度 {avg_sal}%"
+        parts.append(seg + "。")
+    else:
+        parts.append("未提取到规则命中的核心内容，已用关键词密度兜底补充候选片段。")
+
+    text = "".join(parts)
+
+    # 重点建议：从最弱的两个维度各取首条建议
+    suggestions = []
+    for d in sorted(dim_list, key=lambda d: d["score"] / d["max"])[:2]:
+        for s in d.get("suggestions", [])[:1]:
+            suggestions.append(s)
+
+    return {"score": total, "level": level, "text": text, "suggestions": suggestions}
+
+
+def allowed_file(filename):
+    """检查文件扩展名是否允许"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# 本地模型有时不严格遵守提示词的英文键名，改用中文键。这里把常见中文别名归一化为
+# 规范英文键，使结果页（按英文键渲染）无论模型用哪种键名都能正确展示。
+_AI_KEY_ALIASES = {
+    "研究问题": "research_question", "核心方法": "core_method",
+    "关键公式": "key_formulas", "公式": "key_formulas", "公式描述": "key_formulas",
+    "实验数据": "experimental_data", "关键实验数据": "experimental_data", "实验结果": "experimental_data",
+    "结论": "conclusion", "主要结论": "conclusion",
+    "创新点": "innovations", "创新贡献": "innovations",
+    "潜在风险": "potential_risks", "潜在局限": "potential_risks", "局限": "potential_risks", "风险": "potential_risks",
+    "改进建议": "improvement_suggestions", "建议修改方向": "improvement_suggestions", "修改建议": "improvement_suggestions",
+    "研究背景": "background", "背景": "background",
+    "实验亮点": "highlights", "亮点": "highlights",
+    "变量": "variables", "实验设置": "experiment_setup", "关键结果": "key_results",
+}
+
+
+def _normalize_ai_key(k):
+    """单个键名归一化：先精确匹配，再按子串包含兜底（应对「潜在风险或局限」这类复合键）。"""
+    if k in _AI_KEY_ALIASES:
+        return _AI_KEY_ALIASES[k]
+    # 子串兜底：键里包含某中文别名即归一（长别名优先，避免「风险」先于「潜在风险」命中）
+    for alias in sorted((a for a in _AI_KEY_ALIASES if any('一' <= c <= '鿿' for c in a)),
+                        key=len, reverse=True):
+        if alias in k:
+            return _AI_KEY_ALIASES[alias]
+    return k
+
+
+def _normalize_ai_keys(obj):
+    """把 AI 结果里的中文键名归一化为规范英文键（已是英文或未知键则原样保留）。"""
+    if not isinstance(obj, dict):
+        return obj
+    out = {}
+    for k, v in obj.items():
+        nk = _normalize_ai_key(k)
+        # 不覆盖已存在的规范键（优先保留先出现的）
+        if nk not in out:
+            out[nk] = v
+    return out
+
+
+def _extract_ai_json(raw):
+    """
+    从 LLM 输出里稳健地提取 JSON：先去 markdown 围栏直接解析，失败则从任意位置
+    抓出最外层 {...} 再解析。推理模型（如 deepseek-r1）常在 JSON 前后带散文，
+    单纯剥围栏不够，故加一层「抓对象」兜底。全失败时退回 {"raw": ...} 由前端原样展示。
+    """
+    import re as _re
+    s = raw.strip()
+    s = _re.sub(r'^```(?:json)?\s*', '', s)
+    s = _re.sub(r'\s*```$', '', s)
+    # 1) 严格解析（云端规整输出走这条，最快）
+    try:
+        return _normalize_ai_keys(json.loads(s))
+    except Exception:
+        pass
+    # 2) 从任意位置抓最外层 {...} 再严格解析（应对 JSON 前后夹带散文）
+    m = _re.search(r'\{.*\}', s, _re.DOTALL)
+    candidate = m.group(0) if m else s
+    try:
+        return _normalize_ai_keys(json.loads(candidate))
+    except Exception:
+        pass
+    # 3) json_repair 兜底：修本地推理模型常见的烂 JSON（裸百分号 63.8%、尾逗号、
+    #    LaTeX 反斜杠、缺右括号等）。云端规整输出走不到这里。
+    try:
+        import json_repair
+        repaired = json_repair.loads(candidate)
+        if isinstance(repaired, (dict, list)) and repaired:
+            return _normalize_ai_keys(repaired)
+    except Exception:
+        pass
+    return {"raw": raw}
+
+
+def _text_quality_ok(text, min_ratio=0.6):
+    """
+    判断抽取出的文本是否「像正常文字」，用于挡掉 OCR 乱码（如西里尔/拉丁怪符、
+    mojibake）。统计有效字符占比：中日韩文字 + 英文字母数字 + 常见标点/空白。
+    占比过低视为乱码，应继续尝试下游抽取方式。空文本直接判为不合格。
+    """
+    if not text or not text.strip():
+        return False
+    good = 0
+    total = 0
+    for ch in text:
+        if ch.isspace():
+            continue
+        total += 1
+        code = ord(ch)
+        is_cjk = 0x4E00 <= code <= 0x9FFF
+        is_ascii_word = ch.isascii() and (ch.isalnum() or ch in ".,;:!?()[]{}'\"-+/=%@#&*<>|_~$")
+        is_cjk_punct = ch in "，。、；：！？（）【】「」『』“”‘’《》—…·"
+        if is_cjk or is_ascii_word or is_cjk_punct:
+            good += 1
+    if total == 0:
+        return False
+    return (good / total) >= min_ratio
+
+
+def extract_text(file_path):
+    """
+    使用多种方式提取PDF/文档文本，提高解析成功率
+    优先级：docling（文字层结构化）> pdfplumber > PyPDF2 > 本地 OCR（扫描件兜底）
+    每一步都过文本质量闸，乱码（如 docling 对中文扫描件的 OCR 噪声）会被跳过。
+    """
+    text = ""
+    # 只取文件名的扩展名：用 splitext 而非对全路径 rsplit('.')，
+    # 避免目录名含点（如 "26.03..."）导致取错、或无扩展名时 IndexError。
+    file_ext = os.path.splitext(file_path)[1].lstrip('.').lower()
+
+    # 方式1: docling（首选，支持结构化解析；已关 do_ocr，只读文字层）
+    if DOCLING_OK and _converter:
+        try:
+            result = _converter.convert(file_path)
+            text = result.document.export_to_text()
+            if text and text.strip() and _text_quality_ok(text):
+                print(f"[docling] 解析成功，文本长度：{len(text)}")
+                return text
+            elif text and text.strip():
+                print("[docling] 输出疑似乱码，跳过并尝试下游方式")
+        except Exception as e:
+            print(f"[docling] 解析失败：{e}")
+
+    # 方式2: pdfplumber（备选，PDF专用）
+    if file_ext == 'pdf':
+        try:
+            with pdfplumber.open(file_path) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + '\n'
+            if text and text.strip():
+                print(f"[pdfplumber] 解析成功，文本长度：{len(text)}")
+                return text
+        except Exception as e:
+            print(f"[pdfplumber] 解析失败：{e}")
+
+    # 方式3: PyPDF2（备选，兼容性最好）
+    if file_ext == 'pdf':
+        try:
+            with open(file_path, 'rb') as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + '\n'
+            if text and text.strip():
+                print(f"[PyPDF2] 解析成功，文本长度：{len(text)}")
+                return text
+        except Exception as e:
+            print(f"[PyPDF2] 解析失败：{e}")
+
+    # 方式4: 本地 OCR 兜底（扫描件 / 无文字层 PDF）
+    # 只有当前面所有文字层抽取都拿不到文本时才触发——正常文字版 PDF 不会走到这里，
+    # 故对常规论文零额外开销；OCR 较慢，作为最后一道防线保证扫描件也能解析。
+    if file_ext == 'pdf' and OCR_OK:
+        try:
+            print("[OCR] 文字层抽取为空，尝试本地 OCR 兜底...")
+            text = ocr_pdf(file_path)
+            if text and text.strip():
+                print(f"[OCR] 兜底解析成功，文本长度：{len(text)}")
+                return text
+        except Exception as e:
+            print(f"[OCR] 兜底解析失败：{e}")
+
+    # 方式5: 直接读取文本文件
+    if file_ext in {'txt', 'md'}:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            print(f"[直接读取] 解析成功，文本长度：{len(text)}")
+            return text
+        except Exception as e:
+            print(f"[直接读取] 解析失败：{e}")
+
+    return ""
+
+
+def process_content(text, mode='extract'):
+    """
+    处理文本内容
+    mode: 'extract' 核心提取 | 'review' 冗余审查 | 'full' 完整处理
+    """
+    matches = match_rules(text)
+
+    # 分类匹配结果
+    keep_items = [m for m in matches if m.get('action') == 'keep']
+    review_items = [m for m in matches if m.get('action') == 'review']
+
+    if mode == 'extract':
+        # 只保留核心内容
+        result_text = ""
+        last = 0
+        for m in sorted(keep_items, key=lambda x: x['start']):
+            s, e = m['start'], m['end']
+            if last < s:
+                result_text += text[last:s]
+            result_text += f"**【核心】{text[s:e]}**\n"
+            last = e
+        result_text += text[last:]
+        return result_text, keep_items
+
+    elif mode == 'review':
+        # 标记待审查内容
+        result_text = text
+        # 按位置倒序处理，避免索引偏移
+        for m in sorted(review_items, key=lambda x: x['start'], reverse=True):
+            s, e = m['start'], m['end']
+            result_text = result_text[:s] + f"⚠️【可能冗余】{result_text[s:e]}⚠️" + result_text[e:]
+        return result_text, review_items
+
+    else:  # full
+        return text, matches
+
+
+# ==================== 路由处理 ====================
+
+@app.route('/')
+def index():
+    """主页"""
+    return render_template('index.html')
+
+
+@app.route('/result')
+def result():
+    """结果页（数据通过 sessionStorage 传递）"""
+    return render_template('result.html')
+
+
+@app.route('/history')
+def history_page():
+    """分析历史页（列表通过 /api/history 拉取；回看时把完整结果塞回 sessionStorage 再跳 /result）"""
+    return render_template('history.html')
+
+
+@app.route('/api/history', methods=['GET'])
+def api_history_list():
+    """历史摘要列表（最新在前）。"""
+    return jsonify({"code": 200, "msg": "ok", "data": history.list_records()})
+
+
+@app.route('/api/history', methods=['DELETE'])
+def api_history_clear():
+    """一键清空全部历史。"""
+    n = history.clear_records()
+    return jsonify({"code": 200, "msg": f"已清空 {n} 条历史", "data": {"deleted": n}})
+
+
+@app.route('/api/history/<rec_id>', methods=['GET'])
+def api_history_get(rec_id):
+    """取某条完整结果，供回看（前端塞回 sessionStorage 重渲染 /result）。"""
+    rec = history.get_record(rec_id)
+    if rec is None:
+        return jsonify({"code": 404, "msg": "记录不存在"}), 404
+    return jsonify({"code": 200, "msg": "ok", "data": rec})
+
+
+@app.route('/api/history/<rec_id>', methods=['DELETE'])
+def api_history_delete(rec_id):
+    """删除单条历史。"""
+    ok = history.delete_record(rec_id)
+    code = 200 if ok else 404
+    return jsonify({"code": code, "msg": "已删除" if ok else "记录不存在",
+                    "data": {"deleted": ok}}), code
+
+
+# ==================== 我的文档（已上传文件库） ====================
+
+def _original_name(safe_filename):
+    """去掉上传时加的 {timestamp}_ 前缀，还原用户的原始文件名。"""
+    import re as _re
+    return _re.sub(r'^\d+_', '', safe_filename)
+
+
+def _scan_documents():
+    """扫描 uploads/，按原始文件名去重（保留最新），附带「分析过几次」。"""
+    folder = app.config['UPLOAD_FOLDER']
+    try:
+        names = [n for n in os.listdir(folder)
+                 if os.path.isfile(os.path.join(folder, n)) and not n.startswith('.')]
+    except FileNotFoundError:
+        names = []
+
+    # 历史里同名文件的分析次数
+    counts = {}
+    for r in history.list_records():
+        fn = r.get('filename')
+        if fn:
+            counts[fn] = counts.get(fn, 0) + 1
+
+    # 按原始名分组，保留 mtime 最新的物理文件
+    by_orig = {}
+    for n in names:
+        path = os.path.join(folder, n)
+        orig = docnames.lookup(n) or _original_name(n)
+        st = os.stat(path)
+        cur = by_orig.get(orig)
+        if cur is None or st.st_mtime > cur['_mtime']:
+            by_orig[orig] = {
+                'safe_filename': n,
+                'filename': orig,
+                'size': st.st_size,
+                '_mtime': st.st_mtime,
+                'time_str': time.strftime('%Y-%m-%d %H:%M', time.localtime(st.st_mtime)),
+                'analyzed_count': counts.get(orig, 0),
+            }
+    docs = sorted(by_orig.values(), key=lambda d: d['_mtime'], reverse=True)
+    for d in docs:
+        d.pop('_mtime', None)
+    return docs
+
+
+def _safe_upload_path(safe_filename):
+    """把传入文件名收敛到 uploads/ 内的真实路径，挡掉路径穿越。"""
+    name = os.path.basename(safe_filename)
+    folder = app.config['UPLOAD_FOLDER']
+    path = os.path.join(folder, name)
+    if os.path.commonpath([os.path.abspath(path), os.path.abspath(folder)]) != os.path.abspath(folder):
+        return None
+    return path if os.path.isfile(path) else None
+
+
+@app.route('/documents')
+def documents_page():
+    """我的文档页（已上传文件库）。"""
+    return render_template('documents.html')
+
+
+@app.route('/api/documents', methods=['GET'])
+def api_documents_list():
+    return jsonify({"code": 200, "msg": "ok", "data": _scan_documents()})
+
+
+@app.route('/api/documents/<path:safe_filename>/download')
+def api_documents_download(safe_filename):
+    path = _safe_upload_path(safe_filename)
+    if path is None:
+        return jsonify({"code": 404, "msg": "文件不存在"}), 404
+    name = os.path.basename(path)
+    return send_from_directory(app.config['UPLOAD_FOLDER'], name,
+                               as_attachment=True, download_name=_original_name(name))
+
+
+@app.route('/api/documents/<path:safe_filename>', methods=['DELETE'])
+def api_documents_delete(safe_filename):
+    path = _safe_upload_path(safe_filename)
+    if path is None:
+        return jsonify({"code": 404, "msg": "文件不存在"}), 404
+    try:
+        os.remove(path)
+    except OSError as e:
+        return jsonify({"code": 500, "msg": f"删除失败：{e}"}), 500
+    docnames.forget(os.path.basename(safe_filename))
+    return jsonify({"code": 200, "msg": "已删除", "data": {"deleted": True}})
+
+
+@app.route('/api/documents/<path:safe_filename>/reanalyze', methods=['POST'])
+def api_documents_reanalyze(safe_filename):
+    """对「我的文档」里已存在的文件直接重新分析（无需重新上传）。
+
+    文件本就在 uploads/ 里，按 safe_filename 定位后复用 _analyze_and_respond；
+    分析参数（模式 / AI 开关）照常从 request.form 读，与首次上传完全一致。
+    """
+    path = _safe_upload_path(safe_filename)
+    if path is None:
+        return jsonify({"code": 404, "msg": "文件不存在或已被删除"}), 404
+    name = os.path.basename(safe_filename)
+    display_filename = docnames.lookup(name) or _original_name(name)
+    return _analyze_and_respond(path, display_filename)
+
+
+# ==================== 结构化报告（报告中心 / 批量导出） ====================
+
+@app.route('/reports')
+def reports_page():
+    """报告中心页（基于分析历史，逐条导出 Markdown / TXT）。"""
+    return render_template('reports.html')
+
+
+@app.route('/about')
+def about_page():
+    """关于我们 / 产品介绍页（独立宣传落地页 landing/index.html，自包含单文件）。"""
+    return send_from_directory(os.path.join(app.root_path, 'landing'), 'index.html')
+
+
+@app.route('/settings')
+def settings_page():
+    """系统设置页（只读，实时反映后端运行状态）。"""
+    return render_template('settings.html')
+
+
+@app.route('/api/history/<rec_id>/report')
+def api_history_report(rec_id):
+    """把某条历史结果生成结构化报告并作为附件下载。format=md|txt。"""
+    rec = history.get_record(rec_id)
+    if rec is None:
+        return jsonify({"code": 404, "msg": "记录不存在"}), 404
+    fmt = request.args.get('format', 'md')
+    if fmt not in ('md', 'txt'):
+        fmt = 'md'
+    content = report.build_report(rec, fmt)
+    ext = 'md' if fmt == 'md' else 'txt'
+    mime = 'text/markdown; charset=utf-8' if fmt == 'md' else 'text/plain; charset=utf-8'
+    return Response(content, mimetype=mime, headers={
+        'Content-Disposition': f'attachment; filename="PaperCore_report_{rec_id}.{ext}"'
+    })
+
+
+# ==================== 隐藏演示路由 ====================
+
+_DEMO_DATA = {
+    "quick": {
+        "filename": "基于多尺度注意力机制的医学图像分割方法研究.pdf",
+        "text_length": 18432,
+        "analysis_mode": "quick",
+        "quality_score": {
+            "total": 88,
+            "dimensions": {
+                "structure":    {"score": 23, "max": 25, "label": "结构完整度",    "detail": "检测到 5/5 个标准章节", "suggestions": []},
+                "innovation":   {"score": 20, "max": 25, "label": "创新声明密度",  "detail": "检测到 4 处创新声明关键词", "suggestions": []},
+                "data_support": {"score": 22, "max": 25, "label": "数据支撑度",    "detail": "结论含 6 个数值，与实验章节共享 4 个", "suggestions": []},
+                "method":       {"score": 23, "max": 25, "label": "方法描述完整性","detail": "检测到 8 个方法描述关键词", "suggestions": ["建议增加消融分析以验证各模块的独立贡献"]},
+            },
+            "suggestions": ["建议增加消融分析以验证各模块的独立贡献"]
+        },
+        "ai_result": {
+            "research_question": "针对现有医学图像分割方法在边缘细节捕获与计算效率之间难以权衡的问题，本文提出一种基于多尺度注意力机制的轻量化分割框架，旨在提升模型对病灶边界的精准识别能力。",
+            "core_method": "以 U-Net 为基础架构，在跳跃连接处引入多尺度通道注意力模块（MSCA），动态融合不同感受野的特征响应；编码器采用深度可分离卷积替换标准卷积，降低参数量约 40%。",
+            "conclusion": "在 ISIC 2018 皮肤病变数据集和 Kvasir-SEG 结肠镜数据集上，所提方法 Dice 系数分别达到 89.7% 和 91.2%，较基线模型提升 2.3% 和 1.8%，推理速度提高 34%，验证了方法的有效性与临床适用性。"
+        },
+        "matches": [],
+        "stats": {"keep_count": 0, "review_count": 0, "total_matches": 0}
+    },
+    "structured": {
+        "filename": "面向低资源场景的知识图谱关系补全方法.pdf",
+        "text_length": 24617,
+        "analysis_mode": "structured",
+        "quality_score": {
+            "total": 76,
+            "dimensions": {
+                "structure":    {"score": 21, "max": 25, "label": "结构完整度",    "detail": "检测到 4/5 个标准章节", "suggestions": ["未检测到关键词章节，建议在摘要后补充关键词行"]},
+                "innovation":   {"score": 25, "max": 25, "label": "创新声明密度",  "detail": "检测到 5 处创新声明关键词", "suggestions": []},
+                "data_support": {"score": 18, "max": 25, "label": "数据支撑度",    "detail": "结论含 3 个数值，与实验章节共享 2 个", "suggestions": ["结论中的数据与实验章节数据无充分交叉，建议确认结论直接引用了实验结果"]},
+                "method":       {"score": 12, "max": 25, "label": "方法描述完整性","detail": "检测到 4 个方法描述关键词", "suggestions": ["未检测到消融实验，建议增加消融分析以验证各模块的独立贡献"]},
+            },
+            "suggestions": ["未检测到消融实验，建议增加消融分析", "结论数据与实验章节缺乏交叉引用", "建议在摘要后补充关键词行"]
+        },
+        "ai_result": {
+            "research_question": "知识图谱中存在大量缺失关系，现有方法依赖大量标注数据，在低资源领域（如医疗、法律）效果欠佳。本文针对低资源场景下的关系补全问题，探索小样本迁移学习与图神经网络的结合方案。",
+            "core_method": "提出 MetaGNN 框架：以 RGCN 为基础图编码器，通过元学习（MAML 变体）在源域关系上训练通用初始化参数；目标域仅需 5 个支持样本即可快速适配。推理阶段采用原型网络计算关系表征相似度。",
+            "key_formulas": [
+                "关系得分：f(h,r,t) = σ(eₕᵀ · Rᵣ · eₜ)",
+                "元更新：θ* = θ − α · ∇θ L_task",
+                "原型距离：d(x, cₖ) = ‖f_θ(x) − cₖ‖²"
+            ],
+            "experimental_data": "在 FB15k-237 和 NELL-ONE 数据集上评估；5-shot 设置下 MRR 达 0.412，Hits@10 为 63.8%；与 GMatching 基线相比，MRR 提升 6.7%，训练收敛速度提高 2.1×。",
+            "conclusion": "实验结果表明 MetaGNN 在低资源场景下显著优于现有方法，小样本迁移能力强；消融实验验证了元学习模块与图编码器的协同作用，缺少任一组件均导致性能下降 4% 以上。",
+            "innovations": [
+                "首次将 MAML 元学习范式引入知识图谱低资源关系补全任务",
+                "提出关系感知图卷积层，显式建模关系类型对邻域聚合的影响",
+                "设计自适应支持集采样策略，缓解低资源样本分布偏斜问题"
+            ],
+            "potential_risks": [
+                "源域与目标域关系语义差异较大时，元迁移效果可能显著下降",
+                "RGCN 在超大规模图（百万节点级）上存在内存瓶颈，实际部署受限"
+            ],
+            "improvement_suggestions": [
+                "引入关系层次结构先验（如本体树），增强跨域迁移的语义一致性",
+                "探索图稀疏化或采样策略，解决大规模图上的可扩展性问题",
+                "在医疗 KG（UMLS）等真实低资源场景开展端到端验证实验"
+            ]
+        },
+        "matches": [],
+        "stats": {"keep_count": 0, "review_count": 0, "total_matches": 0}
+    },
+    "formula": {
+        "filename": "基于能量均衡路由的无线传感器网络寿命优化研究.pdf",
+        "text_length": 21089,
+        "analysis_mode": "formula",
+        "quality_score": {
+            "total": 91,
+            "dimensions": {
+                "structure":    {"score": 25, "max": 25, "label": "结构完整度",    "detail": "检测到 5/5 个标准章节", "suggestions": []},
+                "innovation":   {"score": 20, "max": 25, "label": "创新声明密度",  "detail": "检测到 4 处创新声明关键词", "suggestions": []},
+                "data_support": {"score": 25, "max": 25, "label": "数据支撑度",    "detail": "结论含 8 个数值，与实验章节共享 6 个", "suggestions": []},
+                "method":       {"score": 21, "max": 25, "label": "方法描述完整性","detail": "检测到 7 个方法描述关键词", "suggestions": ["建议在方法章节明确列出各参数的取值范围与敏感性分析"]},
+            },
+            "suggestions": ["建议补充超参数敏感性分析"]
+        },
+        "ai_result": {
+            "formulas": [
+                {"name": "节点剩余能量",   "expression": "E_r(t) = E_0 − E_tx(t) − E_rx(t)",       "meaning": "节点初始能量减去历史发送与接收能耗之和"},
+                {"name": "自由空间传输能耗", "expression": "E_tx = l·E_elec + l·ε_fs·d²",            "meaning": "距离 d 内传输 l 比特数据的能量消耗（d < d₀）"},
+                {"name": "多路径衰落能耗",  "expression": "E_tx = l·E_elec + l·ε_amp·d⁴",           "meaning": "远距离（d ≥ d₀）传输的放大器能耗模型"},
+                {"name": "簇头选举概率",    "expression": "P(n) = p / (1 − p·(r mod 1/p))",         "meaning": "LEACH 协议中第 r 轮节点 n 被选为簇头的概率"},
+                {"name": "网络寿命目标",    "expression": "max T   s.t. ∀n: E_r(n,T) ≥ 0",         "meaning": "在所有节点能量不耗尽的约束下最大化网络存活时间"}
+            ],
+            "variables": [
+                {"symbol": "E_0",    "definition": "节点初始能量，实验中设为 0.5 J"},
+                {"symbol": "E_elec", "definition": "电路能耗系数，取 50 nJ/bit"},
+                {"symbol": "ε_fs",   "definition": "自由空间放大器系数，取 10 pJ/bit/m²"},
+                {"symbol": "ε_amp",  "definition": "多路径放大器系数，取 0.0013 pJ/bit/m⁴"},
+                {"symbol": "d₀",     "definition": "自由空间与多路径模型的临界距离，约 87 m"},
+                {"symbol": "p",      "definition": "簇头比例参数，实验取 0.05（即 5%）"}
+            ],
+            "experiment_setup": "仿真平台 MATLAB R2023b；100 个节点随机均匀分布在 100×100 m² 区域；基站位于 (50, 175)；数据包大小 4000 bit；每轮仿真重复 100 次取平均；对比算法：LEACH、TEEN、SEP。",
+            "key_results": [
+                "网络寿命（FND）：所提方法 2847 轮 vs. LEACH 1623 轮（+75.4%）",
+                "能量消耗均衡度（标准差）：0.031 J vs. LEACH 0.089 J（降低 65.2%）",
+                "数据传输成功率：98.3%，高于 SEP 的 95.1%",
+                "仿真收敛时间：约 0.8 s / 1000 轮（满足实时监控需求）"
+            ]
+        },
+        "matches": [],
+        "stats": {"keep_count": 0, "review_count": 0, "total_matches": 0}
+    },
+    "defense": {
+        "filename": "基于差分隐私的联邦学习梯度保护方法研究.pdf",
+        "text_length": 19856,
+        "analysis_mode": "defense",
+        "quality_score": {
+            "total": 83,
+            "dimensions": {
+                "structure":    {"score": 23, "max": 25, "label": "结构完整度",    "detail": "检测到 5/5 个标准章节", "suggestions": []},
+                "innovation":   {"score": 25, "max": 25, "label": "创新声明密度",  "detail": "检测到 5 处创新声明关键词", "suggestions": []},
+                "data_support": {"score": 22, "max": 25, "label": "数据支撑度",    "detail": "结论含 5 个数值，与实验章节共享 4 个", "suggestions": []},
+                "method":       {"score": 13, "max": 25, "label": "方法描述完整性","detail": "检测到 4 个方法描述关键词", "suggestions": ["未检测到消融实验，建议增加消融分析以验证各模块的独立贡献", "建议补充与 SMPC/同态加密等基线的对比实验"]},
+            },
+            "suggestions": ["建议增加与同类方法的消融对比实验", "方法章节描述可进一步细化"]
+        },
+        "ai_result": {
+            "background": "联邦学习允许多方在不共享原始数据的前提下协同训练模型，但研究表明梯度信息仍可能泄露用户隐私（梯度反转攻击）。本文聚焦于在保持模型效用的前提下，通过差分隐私机制对上传梯度进行保护，解决现有方案噪声过大导致模型精度大幅下降的问题。",
+            "innovations": [
+                "提出自适应裁剪阈值算法，根据梯度历史分布动态调整裁剪边界，减少不必要的信息损失",
+                "设计分层噪声注入策略，对不同层参数按重要性差异化分配隐私预算（ε 分配）",
+                "理论证明所提方法满足 (ε, δ)-DP 保证，并在 Rényi 差分隐私框架下给出更紧的隐私分析"
+            ],
+            "highlights": "在 MNIST、CIFAR-10、医疗影像数据集（ChestX-ray14）上验证：ε=2 时模型精度仅下降 1.2%，而标准 DP-FedAvg 下降 4.7%；隐私审计实验表明梯度反转攻击重建误差提升至 0.91，接近随机猜测上界。",
+            "qa_pairs": [
+                {"q": "差分隐私引入的噪声会不会严重影响模型收敛？",     "a": "分层噪声策略使关键层（如分类头）获得更少噪声，实验证明收敛轮次仅增加约 12%，精度损失控制在 1.2% 以内。"},
+                {"q": "隐私预算 ε 如何选取？实际部署中如何权衡？",       "a": "建议 ε ∈ [1, 5]，ε=2 为精度与隐私的推荐平衡点，可依据业务敏感度参考论文中的隐私-效用曲线选取。"},
+                {"q": "与安全多方计算（SMPC）相比，本方法的优劣？",      "a": "本方法计算开销极低，无需多方交互，适合大规模部署；代价是隐私保证为概率性。SMPC 提供信息论级别保证但通信开销高出 10× 以上。"},
+                {"q": "本方法是否在真实联邦学习系统中验证过？",           "a": "目前在 PySyft 框架上模拟验证（10~50 参与方）；跨机构真实部署是下一步工作方向。"}
+            ]
+        },
+        "matches": [],
+        "stats": {"keep_count": 0, "review_count": 0, "total_matches": 0}
+    },
+}
+
+
+@app.route('/demo/<slug>')
+def demo(slug):
+    if slug not in _DEMO_DATA:
+        return "演示页面不存在", 404
+    return render_template('result.html', demo_data=_DEMO_DATA[slug])
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    """
+    文件上传与解析接口
+    返回：解析后的文本 + 匹配规则结果
+    """
+    if 'file' not in request.files:
+        return jsonify({"code": 400, "msg": "未找到上传文件"}), 400
+
+    f = request.files['file']
+    if f.filename == '':
+        return jsonify({"code": 400, "msg": "未选择文件"}), 400
+
+    if not allowed_file(f.filename):
+        return jsonify({"code": 400, "msg": "不支持的文件格式，请上传 PDF/DOCX/TXT/MD"}), 400
+
+    # 保存文件。注意：secure_filename 会剥掉中文名的扩展名（"论文.pdf"→"pdf"），
+    # 这里单独保住已被 allowed_file 校验过的扩展名，避免下游按扩展名分发时失效。
+    filename = f.filename            # 原始文件名（含中文），用于结果/历史的显示
+    ext = f.filename.rsplit('.', 1)[1].lower()
+    base = secure_filename(f.filename.rsplit('.', 1)[0]) or 'doc'
+    timestamp = int(time.time())
+    safe_filename = f"{timestamp}_{base}.{ext}"
+    path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+    f.save(path)
+    print(f"文件已保存：{path}")
+    # 记下「safe 物理名 → 原始中文名」，供「我的文档」/「重新分析」展示真名（见 docnames.py）
+    docnames.remember(safe_filename, filename)
+
+    return _analyze_and_respond(path, filename)
+
+
+def _analyze_and_respond(path, display_filename):
+    """对 uploads/ 里某个已存在文件跑完整分析链：解析→规则→评分→AI→写历史→返回 JSON。
+
+    新上传（upload_file）与库内「重新分析」（api_documents_reanalyze）共用这一段，
+    避免两套分析逻辑各自漂移。分析参数仍从 request.form 读（两个入口都是 form POST）；
+    display_filename 是展示用文件名（结果页 / 历史），与物理 safe 文件名解耦。
+    """
+    # 解析文本
+    text = extract_text(path)
+
+    if not text.strip():
+        return jsonify({"code": 400, "msg": "解析出的文本为空，请检查文件内容"}), 400
+
+    # 规则匹配
+    matches = match_rules(text)
+
+    # 统计信息（仅统计非 fallback 的真实规则命中）
+    keep_count = len([m for m in matches if m.get('action') == 'keep' and not m.get('is_fallback')])
+    review_count = len([m for m in matches if m.get('action') == 'review'])
+
+    # 兜底：核心片段为 0 时，从高密度句子中补 3 条候选。
+    # 中英双语：句子切分含英文标点 .!? ；关键词含中英文学术高频词，比较时统一小写。
+    if keep_count == 0:
+        import re as _re
+        sentences = _re.split(r'[。！？；.!?\n]', text)
+        density_kw = ['提出', '研究', '方法', '实验', '结论', '模型', '算法', '分析', '设计', '验证', '结果', '性能',
+                      'propose', 'method', 'experiment', 'result', 'conclusion', 'model', 'algorithm',
+                      'analysis', 'approach', 'performance', 'contribution', 'novel', 'framework']
+        scored = []
+        for s in sentences:
+            s = s.strip()
+            if len(s) < 10:
+                continue
+            s_low = s.lower()
+            score = sum(1 for kw in density_kw if kw in s_low)
+            if score > 0:
+                scored.append((score, s))
+        scored.sort(key=lambda x: -x[0])
+        for _, s in scored[:3]:
+            matches.append({
+                "rule": "fallback_candidate",
+                "description": "候选核心片段（关键词密度）",
+                "start": text.find(s),
+                "end": text.find(s) + len(s),
+                "snippet": s,
+                "salience": 0.5,
+                "action": "keep",
+                "is_fallback": True,
+            })
+    fallback_count = len([m for m in matches if m.get('is_fallback')])
+
+    # 本地章节提取（无论有无 API key 都做，作为 fallback）
+    sections = extract_sections(text)
+    local_summary = {k: v for k, v in sections.items() if v} or None
+
+    # 本地自研评分（四维体检，不依赖外部 API）
+    score_mode = request.form.get('score_mode', 'temperate')
+    if score_mode not in SCORE_PROFILES:
+        score_mode = 'temperate'
+    quality_score = analyze_paper_quality(text, sections, score_mode)
+
+    # AI 深度分析：三档独立引擎，按优先级 v4pro 高级 > 用户填的 Key > 本地大模型 选用。
+    # v4pro = deepseek-v3 高级模式（产品线包装）：5h 滚动窗口最多 5 次，配额闸门在后端
+    # （usage.check_quota），前端绕过也无效（呼应「刷新无效」需求）。
+    analysis_mode = request.form.get('analysis_mode', 'structured')
+    api_key = (request.form.get('api_key', '').strip()
+               or os.environ.get('DEEPSEEK_API_KEY', '').strip())
+    use_local_ai = request.form.get('use_local_ai', '').strip().lower() in ('1', 'true', 'on', 'yes')
+    use_v4pro    = request.form.get('use_v4pro', '').strip().lower() in ('1', 'true', 'on', 'yes')
+    ai_result = None
+    ai_engine_used = None  # 'v4pro' | 'deepseek' | 'ollama' | None，供前端展示「分析引擎」
+
+    prompt_template = ANALYSIS_PROMPTS.get(analysis_mode, ANALYSIS_PROMPTS['structured'])
+    prompt = prompt_template.format(text=text[:6000])  # 约 1500~2000 tokens
+
+    if use_v4pro and V4ProAPI.is_available() and usage.check_quota():
+        try:
+            print("[v4pro] 高级模式分析中（deepseek-v3 + 资深评审 prompt），耗时略长...")
+            ok, raw = V4ProAPI.call(prompt)
+            if ok:
+                ai_result = _extract_ai_json(raw)
+                ai_engine_used = 'v4pro'
+                usage.record_use()  # 成功才记一次，失败不扣配额
+            else:
+                print(f"[v4pro] {raw}")
+        except Exception as e:
+            print(f"[v4pro] 调用失败：{e}")
+    elif api_key:
+        try:
+            ok, raw = CloudAPI.call('deepseek', api_key, prompt)
+            if ok:
+                ai_result = _extract_ai_json(raw)
+                ai_engine_used = 'deepseek'
+        except Exception as e:
+            print(f"[DeepSeek] 调用失败：{e}")
+    elif use_local_ai and OllamaAPI.is_available():
+        try:
+            print(f"[Ollama] 本地大模型分析中（{OllamaAPI.MODEL}），可能较慢...")
+            ok, raw = OllamaAPI.call(prompt)
+            if ok:
+                ai_result = _extract_ai_json(raw)
+                ai_engine_used = 'ollama'
+            else:
+                print(f"[Ollama] {raw}")
+        except Exception as e:
+            print(f"[Ollama] 调用失败：{e}")
+
+    result_data = {
+        "filename": display_filename,
+        "text_length": len(text),
+        "text": text[:200000],
+        "analysis_mode": analysis_mode,
+        "score_mode": score_mode,
+        "ai_result": ai_result,
+        "ai_engine_used": ai_engine_used,
+        "local_summary": local_summary,
+        "quality_score": quality_score,
+        "analysis_overview": build_overview(quality_score, matches),
+        "matches": matches,
+        "stats": {
+            "keep_count": keep_count,
+            "fallback_count": fallback_count,
+            "review_count": review_count,
+            "total_matches": len(matches)
+        }
+    }
+
+    # 追加到本地分析历史（local-first）。失败绝不影响上传主流程，故 try/except 兜底。
+    try:
+        history.add_record(result_data)
+    except Exception as e:
+        print(f"[history] 写入历史失败（不影响本次结果）：{e}")
+
+    return jsonify({"code": 200, "msg": "解析成功", "data": result_data})
+
+
+@app.route('/api/process', methods=['POST'])
+def process_text():
+    """
+    文本处理接口（提取/审查）
+    """
+    req = request.json
+    if not req:
+        return jsonify({"code": 400, "msg": "请求数据为空"}), 400
+
+    text = req.get('text', '')
+    mode = req.get('mode', 'extract')  # extract | review | full
+
+    if not text.strip():
+        return jsonify({"code": 400, "msg": "文本内容为空"}), 400
+
+    # 处理内容
+    processed_text, items = process_content(text, mode)
+
+    return jsonify({
+        "code": 200,
+        "msg": "处理成功",
+        "data": {
+            "processed_text": processed_text,
+            "items": items,
+            "mode": mode
+        }
+    })
+
+
+@app.route('/api/ai/enhance', methods=['POST'])
+def ai_enhance():
+    """
+    AI增强功能接口（润色/摘要/关键词）
+    需要用户确认风险告知（云端功能）
+    """
+    req = request.json
+    if not req or not req.get('risk_agreed'):
+        return jsonify({"code": 403, "msg": "请先阅读并同意AI功能风险告知"}), 403
+
+    engine_type = req.get('engine_type')  # simple | local | cloud
+    func = req.get('func_type')  # polish | summarize | keywords
+    content = req.get('content')
+
+    if not all([engine_type, func, content]):
+        return jsonify({"code": 400, "msg": "缺少必要参数"}), 400
+
+    # 调用AI引擎
+    kwargs = {'text': content}
+    try:
+        if func == 'polish':
+            ok, result = ai_engine.process(engine_type, 'polish', **kwargs)
+        elif func == 'summarize':
+            ok, result = ai_engine.process(engine_type, 'summarize', **kwargs)
+        elif func == 'keywords':
+            ok, result = ai_engine.process(engine_type, 'keywords', **kwargs)
+        else:
+            return jsonify({"code": 400, "msg": "不支持的功能类型"}), 400
+
+        if not ok:
+            return jsonify({"code": 500, "msg": f"AI处理失败：{result}"}), 500
+
+        return jsonify({
+            "code": 200,
+            "msg": "AI处理成功",
+            "data": {
+                "result": result,
+                "engine_type": engine_type,
+                "func_type": func
+            }
+        })
+    except Exception as e:
+        return jsonify({"code": 500, "msg": f"AI处理失败：{str(e)}"}), 500
+
+
+@app.route('/api/export', methods=['POST'])
+def export_file():
+    """
+    导出处理后的文件
+    """
+    req = request.json
+    if not req:
+        return jsonify({"code": 400, "msg": "请求数据为空"}), 400
+
+    content = req.get('content', '')
+    format_type = req.get('format', 'txt')  # txt | md
+
+    if not content.strip():
+        return jsonify({"code": 400, "msg": "导出内容为空"}), 400
+
+    # 生成导出文件
+    timestamp = int(time.time())
+    filename = f"processed_{timestamp}.{format_type}"
+    path = os.path.join(app.config['OUTPUT_FOLDER'], filename)
+
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(content)
+
+    return jsonify({
+        "code": 200,
+        "msg": "导出成功",
+        "data": {
+            "filename": filename,
+            "download_url": f"/api/download/{filename}"
+        }
+    })
+
+
+@app.route('/api/download/<filename>')
+def download_file(filename):
+    """下载导出文件"""
+    return send_from_directory(app.config['OUTPUT_FOLDER'], filename, as_attachment=True)
+
+
+@app.route('/api/rules', methods=['GET'])
+def get_rules():
+    """获取当前规则列表（用于前端展示）"""
+    return jsonify({
+        "code": 200,
+        "data": {
+            "rules": RULES,
+            "total": len(RULES)
+        }
+    })
+
+
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    """返回后端配置状态，供前端展示"""
+    key = os.environ.get('DEEPSEEK_API_KEY', '').strip()
+    has_key = key.startswith('sk-') and len(key) > 20
+    return jsonify({
+        "code": 200,
+        "data": {
+            "api_key_configured": has_key,
+            "ocr_available": OCR_OK,
+            "ollama_available": OllamaAPI.is_available(),
+            "ollama_model": OllamaAPI.MODEL,
+            "v4pro_available": V4ProAPI.is_available(),
+            "v4pro_quota": usage.get_status(),
+        }
+    })
+
+
+# ==================== 错误处理 ====================
+
+@app.errorhandler(413)
+def too_large(e):
+    """文件过大错误处理"""
+    return jsonify({"code": 413, "msg": "文件大小超过50MB限制"}), 413
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """服务器内部错误处理"""
+    return jsonify({"code": 500, "msg": f"服务器内部错误：{str(e)}"}), 500
+
+
+# ==================== 启动入口 ====================
+
+if __name__ == '__main__':
+    print("=" * 50)
+    print("PaperCore · 本地优先的论文核心内容提取系统")
+    print("启动中...")
+    print("=" * 50)
+    # debug 默认关闭：开启会暴露 Werkzeug 交互式调试器（可执行任意代码），
+    # 一旦服务被对外暴露（如 ngrok）即为 RCE 风险。本地调试时设 FLASK_DEBUG=1。
+    app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=5003, host='127.0.0.1')

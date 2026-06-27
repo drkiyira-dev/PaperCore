@@ -1,0 +1,30 @@
+# PaperCore 依赖清单
+# 安装：pip install -r requirements.txt
+# 版本为当前开发环境实测可用版本（2026-06）。
+
+# ===== 核心（必装）=====
+Flask==2.3.3
+python-dotenv==1.2.2
+requests==2.32.5
+jieba==0.42.1
+json_repair==0.60.1
+
+# ===== 文档解析（必装）=====
+docling==2.80.0          # 首选：文字层结构化解析
+pdfplumber==0.11.9       # 备选：PDF 文字层
+PyPDF2==3.0.1            # 兜底：兼容性最好
+
+# ===== 扫描件 OCR（推荐，缺失时自动跳过 OCR 兜底）=====
+# 没有这两个，扫描件 / 无文字层 PDF 将无法解析；普通文字版 PDF 不受影响。
+rapidocr_onnxruntime==1.2.3   # 本地 ONNX OCR，自带中英文模型，不出网
+pymupdf==1.27.2.3             # 把 PDF 页渲染成位图喂给 OCR
+
+# ===== 本地 T5 小模型（可选，体积大）=====
+# 仅当使用 LocalModelAI（engine='local'）时需要；不用可不装。
+# transformers==4.57.6
+# torch==2.10.0
+
+# ===== 本地大模型 Ollama（可选，非 pip 依赖）=====
+# 需单独安装 Ollama App（https://ollama.com）并执行：
+#   ollama pull deepseek-r1:7b
+# 不装则首页不显示「用本地大模型分析」开关，其余功能正常。

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PaperCore · AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body>
+<div class="app-shell">
+
+    <!-- 左侧导航栏 -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">P</div>
+            <span class="logo-text">PaperCore</span>
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-item active" href="#" data-page="workbench">
+                <span class="nav-icon">⊞</span><span class="nav-text">工作台</span>
+            </a>
+            <a class="nav-item" href="/documents">
+                <span class="nav-icon">☰</span><span class="nav-text">我的文档</span>
+            </a>
+            <a class="nav-item" href="/history">
+                <span class="nav-icon">◷</span><span class="nav-text">分析历史</span>
+            </a>
+            <a class="nav-item" href="/reports">
+                <span class="nav-icon">⊡</span><span class="nav-text">结构化报告</span>
+            </a>
+            <a class="nav-item" href="/settings">
+                <span class="nav-icon">⚙</span><span class="nav-text">设置</span>
+            </a>
+            <a class="nav-item" href="/about" target="_blank" style="margin-top:8px;border-top:1px solid var(--color-border);padding-top:14px">
+                <span class="nav-icon" style="color:var(--color-accent)">✦</span><span class="nav-text">关于我们</span>
+            </a>
+        </nav>
+        <div class="sys-status-card">
+            <div class="sys-status-title">系统状态</div>
+            <div class="sys-status-rows">
+                <div class="sys-status-row">
+                    <span class="sys-dot sys-dot-green"></span>
+                    <span class="sys-row-key">本地模式</span>
+                    <span class="sys-row-val">运行中</span>
+                </div>
+                <div class="sys-status-row">
+                    <span class="sys-dot sys-dot-blue"></span>
+                    <span class="sys-row-key">规则引擎</span>
+                    <span class="sys-row-val">已加载</span>
+                </div>
+                <div class="sys-status-row">
+                    <span class="sys-dot sys-dot-dim"></span>
+                    <span class="sys-row-key">AI 增强</span>
+                    <span class="sys-row-val">本地模式</span>
+                </div>
+                <div class="sys-status-row">
+                    <span class="sys-dot sys-dot-green"></span>
+                    <span class="sys-row-key">隐私保护</span>
+                    <span class="sys-row-val">开启</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-area">
+
+        <!-- ===== 工作台 ===== -->
+        <div class="page-panel" id="page-workbench">
+
+        <!-- 顶部状态栏 -->
+        <div class="topbar">
+            <span class="topbar-title">论文分析工作台</span>
+            <div class="status-badges">
+                <span class="badge">本地模式</span>
+                <span class="badge" id="topbarPrivacyBadge">数据不上云</span>
+                <span class="badge badge-green" id="topbarPrivacyStatus">隐私保护中</span>
+            </div>
+        </div>
+
+        <!-- 首屏 Hero 双列 -->
+        <section class="hero-grid">
+
+            <!-- 左侧操作区 -->
+            <div class="hero-left">
+                <h1 class="hero-title">PaperCore</h1>
+                <p class="hero-subtitle">AI-Powered Academic Paper Analysis System</p>
+                <div class="hero-tags">
+                    <span class="tag">AI 深度分析</span>
+                    <span class="tag">多模式理解</span>
+                    <span class="tag">本地隐私优先</span>
+                    <span class="tag">工科论文专用</span>
+                </div>
+                <p class="hero-desc">
+                    接入 DeepSeek V3.2，精准识别研究问题、核心方法、关键公式、实验数据与创新贡献，生成结构化分析报告，提升科研阅读效率。
+                </p>
+
+                <!-- 上传区 -->
+                <div class="upload-card" id="uploadArea">
+                    <div class="upload-icon">📄</div>
+                    <p class="upload-title">上传论文</p>
+                    <p class="upload-hint">拖拽或点击选择 PDF / DOCX / TXT / Markdown</p>
+                    <label class="upload-btn" onclick="event.stopPropagation()">
+                        浏览文件
+                        <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md" style="display:none">
+                    </label>
+                    <div class="file-selected" id="fileSelected" style="display:none">
+                        <span>📎</span>
+                        <span id="fileName"></span>
+                        <span class="file-size" id="fileSize"></span>
+                    </div>
+                </div>
+
+                <!-- DeepSeek API Key -->
+                <div class="api-key-section">
+                    <label class="section-label">
+                        DeepSeek API Key
+                        <span class="optional">（可选，不填则使用本地规则分析）</span>
+                    </label>
+                    <div class="api-key-input-wrap">
+                        <input type="password" id="apiKeyInput" class="api-key-input" placeholder="sk-...">
+                        <span class="api-key-model">deepseek-v3.2</span>
+                    </div>
+                </div>
+
+                <!-- 本地大模型开关（仅当本机 Ollama 可用时由 JS 显示）-->
+                <div class="local-ai-section" id="localAiSection" style="display:none">
+                    <label class="local-ai-toggle">
+                        <input type="checkbox" id="useLocalAiInput">
+                        <span class="local-ai-body">
+                            <span class="local-ai-title">用本地大模型分析 <span class="local-ai-badge">本地</span></span>
+                            <span class="local-ai-desc" id="localAiDesc">不填 Key，调用本机 Ollama 做深度分析 · 纯本地不出网（较慢）</span>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- v4pro 高级模式（5h 滚动配额，超限锁定）-->
+                <div class="local-ai-section v4pro-section" id="v4proSection" style="display:none">
+                    <label class="local-ai-toggle" id="v4proToggle">
+                        <input type="checkbox" id="useV4ProInput">
+                        <span class="local-ai-body">
+                            <span class="local-ai-title">
+                                v4pro 高级分析
+                                <span class="local-ai-badge v4pro-badge">PRO</span>
+                                <span class="v4pro-quota" id="v4proQuota">— / 5</span>
+                            </span>
+                            <span class="local-ai-desc" id="v4proDesc">资深评审视角，更深更长的结构化分析 · 5 小时内限用 5 次</span>
+                        </span>
+                    </label>
+                </div>
+
+                <!-- 分析模式 -->
+                <div class="mode-section">
+                    <label class="section-label">选择分析模式</label>
+                    <div class="mode-selector" id="modeSelector">
+                        <div class="mode-card active" data-mode="quick">
+                            <span class="mode-icon">⚡</span>
+                            <span class="mode-name">30秒速读</span>
+                            <span class="mode-desc">提取核心三要素</span>
+                        </div>
+                        <div class="mode-card" data-mode="structured">
+                            <span class="mode-icon">🔬</span>
+                            <span class="mode-name">结构化理解</span>
+                            <span class="mode-desc">六维深度解析</span>
+                        </div>
+                        <div class="mode-card" data-mode="formula">
+                            <span class="mode-icon">∑</span>
+                            <span class="mode-name">公式/实验保护</span>
+                            <span class="mode-desc">精确技术数据</span>
+                        </div>
+                        <div class="mode-card" data-mode="defense">
+                            <span class="mode-icon">🎓</span>
+                            <span class="mode-name">答辩汇报</span>
+                            <span class="mode-desc">生成答辩大纲</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 评分尺度（论文体检的松紧档，默认温和） -->
+                <div class="mode-section">
+                    <label class="section-label">论文体检 · 评分尺度</label>
+                    <div class="mode-selector" id="scoreSelector">
+                        <div class="mode-card active" data-score="temperate">
+                            <span class="mode-icon">🌱</span>
+                            <span class="mode-name">温和</span>
+                            <span class="mode-desc">鼓励为主 · 给作品打气</span>
+                        </div>
+                        <div class="mode-card" data-score="strict">
+                            <span class="mode-icon">🔍</span>
+                            <span class="mode-name">严格</span>
+                            <span class="mode-desc">审稿视角 · 挑出短板</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 开始分析 -->
+                <button class="btn-start" id="btnStart">开始分析</button>
+                <div class="error-message" id="errorMessage" style="display:none"></div>
+            </div>
+
+            <!-- 右侧 AI 预览区 -->
+            <div class="hero-right">
+                <div class="ai-preview-panel" id="aiPreviewPanel">
+
+                    <!-- 面板顶栏 -->
+                    <div class="aip-header">
+                        <div class="aip-header-left">
+                            <span class="aip-indicator"></span>
+                            <span class="aip-title">实时分析预览</span>
+                            <span class="aip-title-en">AI Structure Preview</span>
+                        </div>
+                        <div class="aip-thinking" id="aipThinking">
+                            <span class="think-dot"></span>
+                            <span class="think-dot"></span>
+                            <span class="think-dot"></span>
+                        </div>
+                    </div>
+
+                    <!-- 扫描线 -->
+                    <div class="aip-scanline"></div>
+
+                    <!-- 待机状态（未上传） -->
+                    <div class="aip-idle" id="aipIdle">
+                        <div class="aip-idle-icon">
+                            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                                <rect x="4" y="4" width="28" height="28" rx="5" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+                                <path d="M12 18h12M12 13h7M12 23h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <circle cx="26" cy="13" r="3" fill="currentColor" opacity="0.7"/>
+                            </svg>
+                        </div>
+                        <p class="aip-idle-msg">等待上传论文<span class="cursor-blink">|</span></p>
+                        <p class="aip-idle-sub">上传后将实时展示：</p>
+                        <ul class="aip-preview-list">
+                            <li><span class="aip-list-dot"></span>研究问题</li>
+                            <li><span class="aip-list-dot"></span>核心方法</li>
+                            <li><span class="aip-list-dot"></span>实验结果</li>
+                            <li><span class="aip-list-dot"></span>创新点</li>
+                            <li><span class="aip-list-dot"></span>论文结论</li>
+                        </ul>
+                    </div>
+
+                    <!-- 分析中状态（上传后 / 处理中） -->
+                    <div class="aip-analyzing" id="aipAnalyzing" style="display:none">
+                        <div class="aip-log-title">分析日志</div>
+                        <div class="aip-log-stream" id="aipLogStream"></div>
+                    </div>
+
+                    <!-- 底部渐变遮罩 -->
+                    <div class="aip-fade-bottom"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 加载遮罩 -->
+        <div class="loading-overlay" id="loadingOverlay" style="display:none">
+            <div class="loading-card">
+                <div class="spinner"></div>
+                <p class="loading-title">AI 分析中</p>
+                <div class="loading-steps" id="loadingSteps"></div>
+                <p class="loading-hint">请勿关闭页面</p>
+            </div>
+        </div>
+
+        <!-- 产品定位区：为谁解决什么 -->
+        <section class="persona-row">
+            <h2 class="section-title">为谁而做</h2>
+            <p class="persona-lead">PaperCore 不是又一个聊天框，而是一套本地优先的论文理解系统——把核心内容留在你自己的电脑里。</p>
+            <div class="persona-cards">
+                <div class="persona-card">
+                    <span class="persona-icon">🎓</span>
+                    <h3>在校学生 · 考研党</h3>
+                    <p class="persona-pain">读得慢，抓不住一篇论文「做了什么、怎么做、结果如何」</p>
+                    <p class="persona-gain">30 秒速读核心三要素，一键生成答辩大纲</p>
+                </div>
+                <div class="persona-card">
+                    <span class="persona-icon">🔬</span>
+                    <h3>科研人员 · 研究生</h3>
+                    <p class="persona-pain">海量文献要快速筛选定位，公式与实验数据不能读错</p>
+                    <p class="persona-gain">公式/变量保护 + 实验数据提取，六维结构化解析</p>
+                </div>
+                <div class="persona-card">
+                    <span class="persona-icon">🔒</span>
+                    <h3>隐私敏感场景</h3>
+                    <p class="persona-pain">未发表稿件、涉密课题，不敢把原文丢进云端大模型</p>
+                    <p class="persona-gain">本地模式可完全离线运行，文件与正文不出本机</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 能力卡片区 -->
+        <section class="feature-row">
+            <h2 class="section-title">系统能力</h2>
+            <div class="feature-cards">
+                <div class="feature-card">
+                    <span class="feature-icon">🔍</span>
+                    <h3>智能章节识别</h3>
+                    <p>自动识别摘要、引言、方法、实验、结论等标准章节结构</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">∑</span>
+                    <h3>公式与变量保护</h3>
+                    <p>精确提取数学公式与变量定义，保持符号系统完整性</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3>实验数据提取</h3>
+                    <p>识别表格、图表数据与关键实验结论，不遗漏关键数值</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📑</span>
+                    <h3>结构化报告导出</h3>
+                    <p>生成可复用的结构化分析报告，支持 TXT / Markdown 导出</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 分析流程区 -->
+        <section class="process-row">
+            <h2 class="section-title">分析流程</h2>
+            <div class="process-steps">
+                <div class="process-step">
+                    <span class="step-num">01</span>
+                    <span class="step-name">上传 PDF</span>
+                </div>
+                <span class="step-arrow">→</span>
+                <div class="process-step">
+                    <span class="step-num">02</span>
+                    <span class="step-name">docling 解析</span>
+                </div>
+                <span class="step-arrow">→</span>
+                <div class="process-step">
+                    <span class="step-num">03</span>
+                    <span class="step-name">章节识别</span>
+                </div>
+                <span class="step-arrow">→</span>
+                <div class="process-step">
+                    <span class="step-num">04</span>
+                    <span class="step-name">核心提取</span>
+                </div>
+                <span class="step-arrow">→</span>
+                <div class="process-step">
+                    <span class="step-num">05</span>
+                    <span class="step-name">DeepSeek 分析</span>
+                </div>
+                <span class="step-arrow">→</span>
+                <div class="process-step">
+                    <span class="step-num">06</span>
+                    <span class="step-name">导出报告</span>
+                </div>
+            </div>
+        </section>
+
+        </div><!-- /page-workbench -->
+
+        <!-- ===== 我的文档 ===== -->
+        <div class="page-panel" id="page-docs" style="display:none">
+            <div class="topbar">
+                <span class="topbar-title">我的文档</span>
+                <div class="status-badges">
+                    <span class="badge">本地模式</span>
+                    <span class="badge badge-green">隐私保护中</span>
+                </div>
+            </div>
+            <div class="placeholder-content">
+                <div class="placeholder-inner">
+                    <div class="ph-icon">☰</div>
+                    <h2 class="ph-title">我的文档</h2>
+                    <p class="ph-subtitle">本地隐私模式下，文档不会自动上传云端</p>
+                    <div class="ph-card">
+                        <div class="ph-card-badge">未授权</div>
+                        <p class="ph-card-text">本地文档库暂未开启</p>
+                        <p class="ph-card-hint">如需启用历史文档管理，可在后续版本接入本地数据库或浏览器缓存</p>
+                    </div>
+                    <div class="ph-actions">
+                        <button class="btn btn-primary" onclick="switchPage('workbench')">返回工作台</button>
+                        <button class="btn btn-secondary" onclick="switchPage('workbench')">上传新论文</button>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /page-docs -->
+
+        <!-- ===== 分析历史 ===== -->
+        <div class="page-panel" id="page-history" style="display:none">
+            <div class="topbar">
+                <span class="topbar-title">分析历史</span>
+                <div class="status-badges">
+                    <span class="badge">本地模式</span>
+                    <span class="badge badge-green">隐私保护中</span>
+                </div>
+            </div>
+            <div class="placeholder-content">
+                <div class="placeholder-inner">
+                    <div class="ph-icon">◷</div>
+                    <h2 class="ph-title">分析历史</h2>
+                    <p class="ph-subtitle">当前版本仅保留本次分析结果</p>
+                    <div class="ph-card">
+                        <div class="ph-card-badge ph-badge-gray">暂无记录</div>
+                        <p class="ph-card-text">还没有历史分析记录</p>
+                        <p class="ph-card-hint">后续版本可接入 SQLite / IndexedDB，实现持久化历史管理</p>
+                    </div>
+                    <div class="ph-actions">
+                        <button class="btn btn-primary" onclick="switchPage('workbench')">开始首次分析</button>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /page-history -->
+
+        <!-- ===== 结构化报告 ===== -->
+        <div class="page-panel" id="page-report" style="display:none">
+            <div class="topbar">
+                <span class="topbar-title">结构化报告</span>
+                <div class="status-badges">
+                    <span class="badge">本地模式</span>
+                    <span class="badge badge-green">隐私保护中</span>
+                </div>
+            </div>
+            <div class="placeholder-content">
+                <div class="placeholder-inner">
+                    <div class="ph-icon">⊡</div>
+                    <h2 class="ph-title">结构化报告</h2>
+                    <p class="ph-subtitle">分析完成后可生成 Markdown / TXT 报告</p>
+                    <div class="ph-card">
+                        <div class="ph-card-badge ph-badge-blue">待生成</div>
+                        <p class="ph-card-text">请先完成一次论文分析</p>
+                        <p class="ph-card-hint">分析结果将在工作台生成后，支持导出为结构化 Markdown 或 TXT 格式报告</p>
+                    </div>
+                    <div class="ph-actions">
+                        <button class="btn btn-primary" onclick="switchPage('workbench')">前往工作台分析</button>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /page-report -->
+
+        <!-- ===== 设置 ===== -->
+        <div class="page-panel" id="page-settings" style="display:none">
+            <div class="topbar">
+                <span class="topbar-title">系统设置</span>
+                <div class="status-badges">
+                    <span class="badge">本地模式</span>
+                    <span class="badge badge-green">隐私保护中</span>
+                </div>
+            </div>
+            <div class="placeholder-content">
+                <div class="placeholder-inner placeholder-inner--settings">
+                    <div class="ph-icon">⚙</div>
+                    <h2 class="ph-title">系统设置</h2>
+                    <p class="ph-subtitle">当前为演示配置，设置项为只读状态</p>
+                    <div class="settings-list">
+                        <div class="settings-item">
+                            <div class="settings-item-left">
+                                <span class="settings-label">本地模式</span>
+                                <span class="settings-desc" id="settingLocalDesc">解析与规则提取均在本地运行</span>
+                            </div>
+                            <span class="settings-toggle settings-toggle--on">开启</span>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-left">
+                                <span class="settings-label">数据不上云</span>
+                                <span class="settings-desc" id="settingPrivacyDesc">文件与文本内容不发送至远程服务器</span>
+                            </div>
+                            <span class="settings-toggle settings-toggle--on" id="settingPrivacyToggle">开启</span>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-left">
+                                <span class="settings-label">AI 增强</span>
+                                <span class="settings-desc">调用 DeepSeek API 进行深度分析</span>
+                            </div>
+                            <span class="settings-toggle settings-toggle--demo" id="settingAIToggle">演示模式</span>
+                        </div>
+                        <div class="settings-item">
+                            <div class="settings-item-left">
+                                <span class="settings-label">API Key</span>
+                                <span class="settings-desc">DeepSeek 云端 API 密钥</span>
+                            </div>
+                            <span class="settings-toggle settings-toggle--off" id="settingAPIKeyToggle">未配置</span>
+                        </div>
+                    </div>
+                    <div class="ph-actions">
+                        <button class="btn btn-primary" onclick="switchPage('workbench')">返回工作台</button>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /page-settings -->
+
+        <!-- 加载遮罩（保持在 main-area 内）-->
+    </main>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}?v=10"></script>
+</body>
+</html>

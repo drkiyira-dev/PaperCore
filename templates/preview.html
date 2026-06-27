@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析结果 · PaperCore AI 学术论文分析系统</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=22">
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+</head>
+<body class="preview-page">
+    <div class="container">
+        <!-- 头部 -->
+        <header class="header">
+            <h1>✍️ 候选删除项复核</h1>
+            <p class="subtitle">PaperCore · 本地隐私处理，数据不上云</p>
+        </header>
+
+        <!-- 原文片段 -->
+        <div class="preview-section">
+            <h3>📄 原文片段</h3>
+            <div class="excerpt">{{ excerpt }}...</div>
+        </div>
+
+        <!-- 待确认删除项 -->
+        <div class="candidates-section">
+            <h3>🔍 待确认删除项（默认保留，取消勾选即删除）</h3>
+            <form id="reviewForm" method="POST" action="/apply">
+                <input type="hidden" name="fname" value="{{ fname }}">
+
+                {% for i, c in enumerate(candidates) %}
+                <div class="candidate-item">
+                    <div class="candidate-info">
+                        <span class="rule-tag">{{ c.rule }}</span>
+                        <span class="salience">显著度 {{ "%.0f"|format(c.salience * 100) }}%</span>
+                    </div>
+                    <div class="snippet">{{ c.snippet }}</div>
+                    <label class="keep-label">
+                        <input type="checkbox" name="keep_{{ i }}" checked>
+                        ✅ 保留此段 <span class="hint">(取消勾选将在导出时删除)</span>
+                    </label>
+                </div>
+                {% endfor %}
+
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="keepAll()">✅ 保留全部</button>
+                    <button type="button" class="btn btn-danger" onclick="deleteAll()">🗑️ 全部删除（取消所有勾选）</button>
+                    <button type="submit" class="btn btn-primary">📎 应用变更并导出 Markdown</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="tip">
+            📌 提示：导出后的文件将根据你的选择剔除冗余内容，保留核心信息。所有操作均在本地完成。
+        </div>
+
+        <!-- AI 增强区域 -->
+        <div class="ai-section">
+            <details>
+                <summary>✨ AI 增强（可选） ▼</summary>
+
+                <div class="risk-notice">
+                    <h4>⚠️ 风险告知</h4>
+                    <p>AI 增强功能可能联网或本地运行，请仔细阅读以下说明：</p>
+                    <ul>
+                        <li><strong>本地简易 AI</strong>：完全离线，基于规则和统计，无数据上传风险。</li>
+                        <li><strong>本地小模型</strong>：使用预训练中文小模型，完全离线，首次使用需下载模型文件（约 300MB）。</li>
+                        <li><strong>云端 API</strong>：需配置第三方平台 API 密钥，数据将上传至对应服务器，请谨慎选择。</li>
+                    </ul>
+                    <label class="risk-agree">
+                        <input type="checkbox" id="riskAgreed">
+                        我已完全阅读并知晓风险，自愿开启 AI 增强功能
+                    </label>
+                </div>
+
+                <div class="ai-form">
+                    <div class="form-group">
+                        <label>选择 AI 引擎</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="engine_type" value="local_simple" checked> 🔧 本地简易 AI（规则/统计）</label>
+                            <label><input type="radio" name="engine_type" value="local_model"> 💻 本地小模型（中文，离线）</label>
+                            <label><input type="radio" name="engine_type" value="cloud"> ☁️ 云端 API（需密钥）</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group cloud-only" style="display: none;">
+                        <label>选择平台</label>
+                        <select id="platform">
+                            <option value="doubao">字节豆包</option>
+                            <option value="qwen">阿里通义千问</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group cloud-only" style="display: none;">
+                        <label>API 密钥</label>
+                        <input type="password" id="apiKey" placeholder="请输入 API 密钥">
+                        <a href="#" class="help-link">[免费申请教程](#)</a>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="button" class="btn btn-secondary" onclick="testConnection()">🔌 测试连接</button>
+                        <span class="model-status">模型状态：<span id="modelStatus">未加载</span></span>
+                        <button type="button" class="btn btn-link" onclick="checkModel()">检查/下载模型</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>选择功能</label>
+                        <select id="funcType">
+                            <option value="polish">学术润色</option>
+                            <option value="summary">摘要生成</option>
+                            <option value="keywords">关键词提取</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>待处理内容</label>
+                        <textarea id="aiContent" rows="4" placeholder="默认使用本地降噪后的核心内容，可修改"></textarea>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" onclick="processAI()">🚀 发起 AI 处理</button>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
