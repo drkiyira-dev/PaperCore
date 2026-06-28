@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Core — Choose your language</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 48px 20px;
+      background: radial-gradient(1100px 560px at 50% -8%, #fff7ea, #f3ebdb);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+      color: #3d2c14;
+    }
+    .pc-logo { display: flex; align-items: center; gap: 10px; margin-bottom: 40px; }
+    .pc-dot { width: 13px; height: 13px; border-radius: 50%; background: #b5793a; }
+    .pc-name { font-size: 20px; font-weight: 600; letter-spacing: .3px; }
+    h1 { font-size: 23px; font-weight: 600; margin-bottom: 7px; text-align: center; }
+    .sub { font-size: 13px; color: #8a745a; margin-bottom: 36px; text-align: center; }
+    .langs { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; max-width: 660px; width: 100%; }
+    .lang {
+      display: flex; flex-direction: column; gap: 5px; flex: 1 1 170px; max-width: 220px;
+      padding: 24px 26px; background: #fffdf8; border: 1px solid #e9dcc4; border-radius: 16px;
+      text-decoration: none; color: inherit; box-shadow: 0 8px 24px rgba(120, 80, 20, .06);
+      transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .lang:hover { transform: translateY(-3px); box-shadow: 0 16px 38px rgba(120, 80, 20, .14); border-color: #cf9450; }
+    .lang-name { font-size: 19px; font-weight: 600; }
+    .lang-en { font-size: 12px; color: #9a8a6e; }
+    .foot { margin-top: 44px; font-size: 12px; color: #a4906f; }
+    .foot a { color: inherit; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="pc-logo"><span class="pc-dot"></span><span class="pc-name">Paper&nbsp;Core</span></div>
+  <h1>Choose your language</h1>
+  <p class="sub">言語を選択 · 选择语言</p>
+  <div class="langs">
+    <a class="lang" href="/brand/en/"><span class="lang-name">English</span><span class="lang-en">Global</span></a>
+    <a class="lang" href="/brand/ja/"><span class="lang-name">日本語</span><span class="lang-en">Japanese</span></a>
+    <a class="lang" href="/brand/zh/"><span class="lang-name">中文 · 墨析</span><span class="lang-en">Chinese</span></a>
+    <a class="lang" href="/brand/ko/"><span class="lang-name">한국어</span><span class="lang-en">Korean</span></a>
+    <a class="lang" href="/brand/de/"><span class="lang-name">Deutsch</span><span class="lang-en">German</span></a>
+  </div>
+  <p class="foot"><a href="/brand/en/">Paper Core</a> · Local-first · Open source</p>
+</body>
+</html>

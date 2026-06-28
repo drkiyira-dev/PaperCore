@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Core — 논문을 이해하는 새로운 방법.</title>
+  <meta name="description" content="Paper Core는 모든 논문의 핵심을 추출하고 구조와 수식을 보존해 더 빠르게 이해하도록 돕습니다. 로컬 우선. 오픈소스." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============ SPLASH ============ -->
+  <div class="splash" id="splash">
+    <div class="splash-inner">
+      <span class="splash-word">Paper&nbsp;Core.</span>
+      <span class="splash-rule"></span>
+    </div>
+    <span class="splash-skip">클릭하여 건너뛰기</span>
+  </div>
+
+  <!-- ============ SCROLL PROGRESS ============ -->
+  <div class="progress" id="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="#top">
+      <span class="nav-dot"></span>
+      <span>Paper&nbsp;Core</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problem">문제</a>
+      <a href="#how">원리</a>
+      <a href="#features">기능</a>
+      <a href="#demo">데모</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub</a>
+      <details class="nav-lang">
+        <summary aria-label="언어 변경"><span class="nav-lang-globe" aria-hidden="true">🌐</span><span class="nav-lang-cur">한국어</span><span class="nav-lang-caret" aria-hidden="true"></span></summary>
+        <div class="nav-lang-menu" role="menu">
+          <a role="menuitem" href="/brand/en/">English</a>
+          <a role="menuitem" href="/brand/ja/">日本語</a>
+          <a role="menuitem" href="/brand/zh/">中文 · 墨析</a>
+          <a role="menuitem" href="/brand/ko/" class="is-current" aria-current="true">한국어</a>
+          <a role="menuitem" href="/brand/de/">Deutsch</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <!-- ============ 1 · HERO ============ -->
+  <section class="hero" id="top">
+    <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-glow glow-a" data-parallax="0.18" aria-hidden="true"></div>
+    <div class="hero-glow glow-b" data-parallax="0.10" aria-hidden="true"></div>
+    <div class="hero-glow glow-c" data-parallax="0.26" aria-hidden="true"></div>
+    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="hero-inner">
+      <p class="eyebrow reveal" data-reveal>로컬 우선 · 오픈소스</p>
+      <h1 class="hero-title reveal" data-reveal>Paper&nbsp;Core.</h1>
+      <p class="hero-sub reveal" data-reveal>논문을 이해하는 새로운 방법.</p>
+      <div class="hero-actions reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core 사용해보기</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub에서 보기</a>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#stats" aria-label="아래로 스크롤">
+      <span class="scroll-cue-line"></span>
+    </a>
+  </section>
+
+  <!-- ============ 2 · STATS BAND ============ -->
+  <section class="stats" id="stats">
+    <div class="wrap stats-grid">
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="0.87" data-dec="2">0.00</span>
+        <span class="stat-label">F1 · 핵심 추출</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="100" data-suf="%">0</span>
+        <span class="stat-label">온디바이스 실행</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="28" data-suf="+">0</span>
+        <span class="stat-label">중요도 규칙</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="3">0</span>
+        <span class="stat-label">평가 등급</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 · PROBLEM ============ -->
+  <section class="problem" id="problem">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>문제</p>
+      <h2 class="big-statement reveal" data-reveal>
+        페이지는 너무 많다.<br /><span class="dim">시간은 너무 없다.</span>
+      </h2>
+      <p class="lead center reveal" data-reveal>
+        연구는 빠르게 나아가지만 읽기는 그렇지 못합니다. 모든 논문은 핵심을 도입부와
+        기호, 서술 속에 묻어 둡니다 — 그리고 정작 필요한 수식은 보통의 요약이
+        가장 먼저 잃어버리는 부분입니다.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 · HOW IT WORKS (scrollytelling) ============ -->
+  <section class="how" id="how">
+    <div class="how-track">
+      <div class="how-sticky">
+        <div class="how-head">
+          <p class="eyebrow center">작동 방식</p>
+          <h2 class="section-title">네 단계, 하나의 핵심.</h2>
+        </div>
+        <div class="how-stage">
+          <div class="how-visual" id="howVisual" data-active="0" aria-hidden="true">
+            <div class="v-page v-p3"></div>
+            <div class="v-page v-p2"></div>
+            <div class="v-paper">
+              <div class="v-beam"></div>
+              <div class="v-phead">
+                <span class="v-tag">연구 논문 · 14쪽</span>
+                <span class="v-tl"></span>
+                <span class="v-tl short"></span>
+              </div>
+              <span class="v-ln w92"></span>
+              <span class="v-ln w70 key"></span>
+              <span class="v-ln w96"></span>
+              <div class="v-fig"><span>그림 2 — 결과</span></div>
+              <span class="v-ln w88 key"></span>
+              <span class="v-ln w78"></span>
+              <div class="v-fx">softmax(QKᵀ ∕ √d<sub>k</sub>)&thinsp;V</div>
+              <span class="v-ln w54 key"></span>
+              <span class="v-ln w84"></span>
+            </div>
+            <div class="v-digest">
+              <span class="vd-title">핵심 요약</span>
+              <span class="vd-ln"></span><span class="vd-ln"></span><span class="vd-ln short"></span>
+              <div class="vd-chips"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+          <div class="how-right">
+            <ol class="how-steps" id="howSteps">
+              <li class="how-step" data-step="0"><span class="how-num">01</span><div class="how-sb"><b>전부 읽기</b><span>수십 쪽, 도입부와 기호로 빽빽합니다.</span></div></li>
+              <li class="how-step" data-step="1"><span class="how-num">02</span><div class="how-sb"><b>스캔 &amp; 정렬</b><span>Paper Core가 문서 전체를 읽되 구조는 그대로 유지합니다.</span></div></li>
+              <li class="how-step" data-step="2"><span class="how-num">03</span><div class="how-sb"><b>중요도순 정렬</b><span>중요한 주장·방법·결과가 환하게 드러납니다.</span></div></li>
+              <li class="how-step" data-step="3"><span class="how-num">04</span><div class="how-sb"><b>핵심 정제</b><span>남는 것은 몇 분이면 읽는 요약입니다.</span></div></li>
+              <span class="how-rail" aria-hidden="true"><span class="how-rail-fill" id="howRailFill"></span></span>
+            </ol>
+          </div>
+        </div>
+        <div class="how-hint" id="howHint" aria-hidden="true">
+          <span class="how-hint-txt">스크롤하여 진행</span>
+          <span class="how-hint-arrow"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5 · FEATURES ============ -->
+  <section class="features" id="features">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>기능</p>
+      <h2 class="section-title reveal" data-reveal>
+        핵심을 추출하고. 구조를 보존하고. 더 빠르게 이해합니다.
+      </h2>
+
+      <div class="cards">
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-core" aria-hidden="true">
+            <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+            <span class="core-dot"></span>
+          </div>
+          <h3>핵심&nbsp;추출</h3>
+          <p>중요도 기반 추출이 중요한 주장·방법·결과를 드러내고,
+             형식적인 군더더기는 조용히 걷어냅니다.</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-formula" aria-hidden="true">
+            <span class="fx">∑</span>
+            <span class="shield"></span>
+          </div>
+          <h3>구조&nbsp;보존</h3>
+          <p>장·수식·그림이 형태를 유지합니다. 수식은 수식 그대로 —
+             깨진 텍스트로 뭉개지지 않습니다.</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-fast" aria-hidden="true">
+            <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span>
+          </div>
+          <h3>더&nbsp;빠른&nbsp;이해</h3>
+          <p>몇 분이면 읽는 구조화된 요약, 모든 줄이 원문의
+             정확한 구절로 연결됩니다.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · BENTO ============ -->
+  <section class="bento-sec" id="bento">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>한눈에 모두</p>
+      <h2 class="section-title reveal" data-reveal>단 하나의 생각을 중심으로: 핵심.</h2>
+
+      <div class="bento">
+        <div class="b-tile b-big tilt reveal" data-reveal>
+          <span class="b-kicker">로컬 우선</span>
+          <h3>아무것도 기기를<br />벗어나지 않습니다.</h3>
+          <p>추출·정렬·평가가 모두 사용자 기기에서 실행됩니다. 클라우드는 전혀 필요 없습니다.</p>
+          <div class="b-lockwrap" aria-hidden="true"><span class="b-lock">🔒</span></div>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">0.87</span>
+          <p>핵심 문장 추출 F1 점수.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">28<i>+</i></span>
+          <p>직접 다듬은 중요도 규칙, 각각 쉬운 말로 설명됩니다.</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <div class="b-formula">A(Q,K,V)=softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          <p>수식은 수식 그대로 — 보존되며 깨진 텍스트로 뭉개지지 않습니다.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">한/A</span>
+          <p>한국어·영어 논문도 깔끔하게 읽힙니다.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">⌁</span>
+          <p>스캔한 PDF도 온디바이스 OCR로 처리합니다.</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <span class="b-kicker">오픈소스</span>
+          <h3>MIT 라이선스. 모든 줄을 검증하세요.</h3>
+          <p>전체 파이프라인이 GitHub에 공개 — 블랙박스는 없습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 · DEMO ============ -->
+  <section class="demo" id="demo">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>직접 확인하기</p>
+      <h2 class="section-title reveal" data-reveal>14쪽에서 정말 중요한 부분으로.</h2>
+
+      <div class="demo-stage reveal" data-reveal>
+        <div class="paper" id="paperPane">
+          <div class="scan-beam" id="scanBeam" aria-hidden="true"></div>
+          <p class="paper-title">장문 검색을 위한<br />어텐션 유도 희소 트랜스포머</p>
+          <p class="paper-auth">김민준, 이서연, 박지호 · 2025</p>
+          <span class="ln w90"></span><span class="ln w98"></span><span class="ln w72"></span>
+          <span class="ln w95"></span><span class="ln w60"></span>
+          <div class="paper-fig"><span>그림 3 — 검색 지연 vs. 문서 길이</span></div>
+          <span class="ln w88"></span><span class="ln w93"></span><span class="ln w50"></span>
+          <div class="paper-formula">A(Q,K,V)=softmax(QKᵀ⁄√d<sub>k</sub>)·M&thinsp;V</div>
+          <span class="ln w96"></span><span class="ln w70"></span><span class="ln w84"></span>
+          <span class="ln w40"></span>
+        </div>
+
+        <div class="output" id="outputPane">
+          <div class="out-head">
+            <span class="out-status" id="outStatus">● 분석 중</span>
+            <span class="demo-dots" id="demoDots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="out-meta">Paper&nbsp;Core</span>
+          </div>
+          <h4 class="out-label">핵심 요약</h4>
+          <p class="typed" id="typeTarget"></p>
+          <h4 class="out-label delay-kw">키워드</h4>
+          <div class="chips" id="kwChips"></div>
+          <h4 class="out-label delay-fx">보존된 수식</h4>
+          <div class="out-formula" id="formulaOut">
+            Attention(Q,K,V)=softmax<span class="paren">(</span>
+            <span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span>
+            <span class="paren">)</span>&thinsp;M&thinsp;V
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8 · BEFORE / AFTER ============ -->
+  <section class="ba" id="ba">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>전후 비교</p>
+      <h2 class="section-title reveal" data-reveal>드래그해서 차이를 확인하세요.</h2>
+
+      <div class="ba-stage reveal" id="baStage" data-reveal>
+        <div class="ba-pane ba-before">
+          <span class="ba-badge ba-badge-r">원문 · 14쪽</span>
+          <div class="ba-dense">
+            <span class="ln w92"></span><span class="ln w98"></span><span class="ln w85"></span><span class="ln w95"></span>
+            <span class="ln w70"></span><span class="ln w90"></span><span class="ln w99"></span><span class="ln w60"></span>
+            <span class="ln w88"></span><span class="ln w94"></span><span class="ln w76"></span><span class="ln w91"></span>
+            <span class="ln w97"></span><span class="ln w65"></span><span class="ln w89"></span><span class="ln w50"></span>
+            <span class="ln w93"></span><span class="ln w84"></span><span class="ln w96"></span><span class="ln w72"></span>
+          </div>
+        </div>
+        <div class="ba-pane ba-after" id="baAfter">
+          <span class="ba-badge">Paper&nbsp;Core</span>
+          <div class="ba-digest">
+            <h4>핵심 요약</h4>
+            <p>희소 어텐션 메커니즘이 장문 검색을 O(n&nbsp;log&nbsp;n)으로 확장해,
+               밀집 모델에 가까운 재현율을 유지하면서 지연을 4.1배 줄입니다.</p>
+            <div class="ba-chips"><span>희소 어텐션</span><span>O(n log n)</span><span>4.1배 빠름</span></div>
+            <div class="ba-fx">softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          </div>
+        </div>
+        <div class="ba-divider" id="baDivider"><span class="ba-knob" aria-hidden="true">⇄</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 9 · PIPELINE ============ -->
+  <section class="pipe" id="pipe">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>내부 동작</p>
+      <h2 class="section-title reveal" data-reveal>처음부터 끝까지, 로컬 파이프라인.</h2>
+
+      <div class="pipe-flow" id="pipeFlow">
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h4.5"/></svg></span>
+          <b>PDF</b><span>모든 논문</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v9.5"/><path d="M8 9.5l4 4 4-4"/><path d="M5 19h14"/></svg></span>
+          <b>추출</b><span>텍스트 · 표 · 그림</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+          <b>중요도</b><span>중요한 것 정렬</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+          <b>구조</b><span>수식·장 유지</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg></span>
+          <b>요약</b><span>몇 분이면 읽기</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 · PRIVACY ============ -->
+  <section class="priv" id="priv">
+    <div class="wrap priv-grid">
+      <div class="priv-visual reveal" data-reveal aria-hidden="true">
+        <div class="device">
+          <div class="device-screen"><span class="device-lock">🔒</span></div>
+          <div class="device-base"></div>
+        </div>
+        <div class="cloud-no">
+          <span class="cloud">☁</span>
+          <span class="cloud-slash"></span>
+        </div>
+        <span class="dot-line d1"></span><span class="dot-line d2"></span>
+      </div>
+      <div class="priv-copy">
+        <p class="eyebrow reveal" data-reveal>로컬 우선</p>
+        <h2 class="section-title left reveal" data-reveal>당신의 논문은 기기를 떠나지 않습니다.</h2>
+        <ul class="priv-list">
+          <li class="reveal" data-reveal>업로드 없음, 계정 없음, 추적 없음</li>
+          <li class="reveal" data-reveal>완전 오프라인 실행 — 비행기에서도</li>
+          <li class="reveal" data-reveal>선택적 로컬 LLM; 클라우드는 전혀 필요 없습니다</li>
+          <li class="reveal" data-reveal>오픈소스 — 모든 줄을 직접 검증하세요</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 · MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>PDF</span><span>·</span><span>스캔본</span><span>·</span><span>한국어 / 영어</span><span>·</span>
+      <span>수식</span><span>·</span><span>장문</span><span>·</span><span>표</span><span>·</span>
+      <span>그림</span><span>·</span><span>LaTeX</span><span>·</span>
+      <span>PDF</span><span>·</span><span>스캔본</span><span>·</span><span>한국어 / 영어</span><span>·</span>
+      <span>수식</span><span>·</span><span>장문</span><span>·</span><span>표</span><span>·</span>
+      <span>그림</span><span>·</span><span>LaTeX</span><span>·</span>
+    </div>
+  </div>
+
+  <!-- ============ 12 · FAQ ============ -->
+  <section class="faq" id="faq">
+    <div class="wrap faq-wrap">
+      <p class="eyebrow center reveal" data-reveal>자주 묻는 질문</p>
+      <h2 class="section-title reveal" data-reveal>좋은 질문에, 솔직한 답변.</h2>
+
+      <div class="faq-list reveal" data-reveal>
+        <details class="faq-item">
+          <summary>그냥 ChatGPT 껍데기 아닌가요?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>아닙니다. 중요도 정렬과 규칙 엔진이 로컬에서 핵심 작업을 수행합니다. 대규모 언어 모델은 선택 사항이며 기본적으로 꺼져 있습니다 — Paper Core는 그것을 끈 상태로도 완전히 작동합니다.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>제 개인정보는 어떻게 보호되나요?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>모든 것이 사용자 기기에서 실행됩니다. 업로드되는 것이 없고 계정도 없으며 완전히 오프라인으로 작동합니다. 소스 코드를 직접 확인할 수 있습니다.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>어떤 논문을 읽을 수 있나요?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>원본 및 스캔 PDF(온디바이스 OCR), 한국어 / 영어 문서, 장문 논문, 그리고 수식·표·그림이 포함된 자료까지 읽습니다.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>무료이고 오픈소스인가요?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>네. Paper Core는 MIT 라이선스이며 전체 파이프라인이 GitHub에 공개되어 있습니다 — 서비스 뒤에 숨겨진 것은 없습니다.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>논문 읽기를 대체하나요?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>아닙니다 — 핵심을 드러내고 모든 줄을 원문 구절로 연결해, 정말 중요한 곳에 읽는 시간을 쓰도록 돕습니다.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 13 · CLOSING ============ -->
+  <section class="closing" id="closing">
+    <div class="hero-glow glow-d" data-parallax="0.2" aria-hidden="true"></div>
+    <div class="wrap center">
+      <h2 class="closing-title reveal" data-reveal>Paper&nbsp;Core.</h2>
+      <p class="closing-sub reveal" data-reveal>덜 읽고, 더 이해하세요.</p>
+      <div class="hero-actions center reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core 사용해보기</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub에서 보기</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Paper Core</span>
+    <span class="foot-mid">로컬 우선 · 오픈소스 · MIT</span>
+    <a href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">github.com/drkiyira-dev/PaperCore</a>
+    <a class="foot-region" href="/brand/regions/" style="color:inherit;text-decoration:none;opacity:.72">🌐 한국어 ▾</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

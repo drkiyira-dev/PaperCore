@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Core — Eine neue Art, Paper zu verstehen.</title>
+  <meta name="description" content="Paper Core extrahiert den Kern jedes Papers, bewahrt Struktur und Formeln und lässt Sie schneller verstehen. Local-first. Open Source." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============ SPLASH ============ -->
+  <div class="splash" id="splash">
+    <div class="splash-inner">
+      <span class="splash-word">Paper&nbsp;Core.</span>
+      <span class="splash-rule"></span>
+    </div>
+    <span class="splash-skip">Zum Überspringen klicken</span>
+  </div>
+
+  <!-- ============ SCROLL PROGRESS ============ -->
+  <div class="progress" id="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="#top">
+      <span class="nav-dot"></span>
+      <span>Paper&nbsp;Core</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problem">Problem</a>
+      <a href="#how">Ablauf</a>
+      <a href="#features">Funktionen</a>
+      <a href="#demo">Demo</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub</a>
+      <details class="nav-lang">
+        <summary aria-label="Sprache wechseln"><span class="nav-lang-globe" aria-hidden="true">🌐</span><span class="nav-lang-cur">Deutsch</span><span class="nav-lang-caret" aria-hidden="true"></span></summary>
+        <div class="nav-lang-menu" role="menu">
+          <a role="menuitem" href="/brand/en/">English</a>
+          <a role="menuitem" href="/brand/ja/">日本語</a>
+          <a role="menuitem" href="/brand/zh/">中文 · 墨析</a>
+          <a role="menuitem" href="/brand/ko/">한국어</a>
+          <a role="menuitem" href="/brand/de/" class="is-current" aria-current="true">Deutsch</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <!-- ============ 1 · HERO ============ -->
+  <section class="hero" id="top">
+    <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-glow glow-a" data-parallax="0.18" aria-hidden="true"></div>
+    <div class="hero-glow glow-b" data-parallax="0.10" aria-hidden="true"></div>
+    <div class="hero-glow glow-c" data-parallax="0.26" aria-hidden="true"></div>
+    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="hero-inner">
+      <p class="eyebrow reveal" data-reveal>Local-first · Open Source</p>
+      <h1 class="hero-title reveal" data-reveal>Paper&nbsp;Core.</h1>
+      <p class="hero-sub reveal" data-reveal>Eine neue Art, Paper zu verstehen.</p>
+      <div class="hero-actions reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core testen</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">Auf GitHub ansehen</a>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#stats" aria-label="Nach unten scrollen">
+      <span class="scroll-cue-line"></span>
+    </a>
+  </section>
+
+  <!-- ============ 2 · STATS BAND ============ -->
+  <section class="stats" id="stats">
+    <div class="wrap stats-grid">
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="0.87" data-dec="2">0.00</span>
+        <span class="stat-label">F1 · Kernextraktion</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="100" data-suf="%">0</span>
+        <span class="stat-label">läuft lokal</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="28" data-suf="+">0</span>
+        <span class="stat-label">Salienz-Regeln</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="3">0</span>
+        <span class="stat-label">Bewertungsstufen</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 · PROBLEM ============ -->
+  <section class="problem" id="problem">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>Das Problem</p>
+      <h2 class="big-statement reveal" data-reveal>
+        Zu viele Seiten.<br /><span class="dim">Zu wenig Zeit.</span>
+      </h2>
+      <p class="lead center reveal" data-reveal>
+        Die Forschung ist schnell. Das Lesen nicht. Jedes Paper vergräbt seinen
+        Kern unter Seiten von Vorgeplänkel, Notation und Prosa — und die Formeln,
+        die Sie wirklich brauchen, verlieren gewöhnliche Zusammenfassungen zuerst.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 · HOW IT WORKS (scrollytelling) ============ -->
+  <section class="how" id="how">
+    <div class="how-track">
+      <div class="how-sticky">
+        <div class="how-head">
+          <p class="eyebrow center">So funktioniert's</p>
+          <h2 class="section-title">Vier Schritte. Ein Kern.</h2>
+        </div>
+        <div class="how-stage">
+          <div class="how-visual" id="howVisual" data-active="0" aria-hidden="true">
+            <div class="v-page v-p3"></div>
+            <div class="v-page v-p2"></div>
+            <div class="v-paper">
+              <div class="v-beam"></div>
+              <div class="v-phead">
+                <span class="v-tag">Fachartikel · 14 S.</span>
+                <span class="v-tl"></span>
+                <span class="v-tl short"></span>
+              </div>
+              <span class="v-ln w92"></span>
+              <span class="v-ln w70 key"></span>
+              <span class="v-ln w96"></span>
+              <div class="v-fig"><span>Abb. 2 — Ergebnisse</span></div>
+              <span class="v-ln w88 key"></span>
+              <span class="v-ln w78"></span>
+              <div class="v-fx">softmax(QKᵀ ∕ √d<sub>k</sub>)&thinsp;V</div>
+              <span class="v-ln w54 key"></span>
+              <span class="v-ln w84"></span>
+            </div>
+            <div class="v-digest">
+              <span class="vd-title">Kernzusammenfassung</span>
+              <span class="vd-ln"></span><span class="vd-ln"></span><span class="vd-ln short"></span>
+              <div class="vd-chips"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+          <div class="how-right">
+            <ol class="how-steps" id="howSteps">
+              <li class="how-step" data-step="0"><span class="how-num">01</span><div class="how-sb"><b>Alles lesen</b><span>Dutzende Seiten, dicht mit Vorgeplänkel und Notation.</span></div></li>
+              <li class="how-step" data-step="1"><span class="how-num">02</span><div class="how-sb"><b>Scannen &amp; ausrichten</b><span>Paper Core liest das ganze Dokument, Struktur bleibt erhalten.</span></div></li>
+              <li class="how-step" data-step="2"><span class="how-num">03</span><div class="how-sb"><b>Nach Salienz ordnen</b><span>Die wichtigen Aussagen, Methoden und Ergebnisse leuchten auf.</span></div></li>
+              <li class="how-step" data-step="3"><span class="how-num">04</span><div class="how-sb"><b>Kern destillieren</b><span>Übrig bleibt eine Zusammenfassung, die Sie in Minuten lesen.</span></div></li>
+              <span class="how-rail" aria-hidden="true"><span class="how-rail-fill" id="howRailFill"></span></span>
+            </ol>
+          </div>
+        </div>
+        <div class="how-hint" id="howHint" aria-hidden="true">
+          <span class="how-hint-txt">Scrollen zum Fortfahren</span>
+          <span class="how-hint-arrow"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5 · FEATURES ============ -->
+  <section class="features" id="features">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>Was es leistet</p>
+      <h2 class="section-title reveal" data-reveal>
+        Den Kern extrahieren. Die Struktur bewahren. Schneller verstehen.
+      </h2>
+
+      <div class="cards">
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-core" aria-hidden="true">
+            <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+            <span class="core-dot"></span>
+          </div>
+          <h3>Den&nbsp;Kern&nbsp;extrahieren</h3>
+          <p>Salienz-basierte Extraktion bringt die wichtigen Aussagen, Methoden
+             und Ergebnisse hervor — und lässt Floskeln leise weg.</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-formula" aria-hidden="true">
+            <span class="fx">∑</span>
+            <span class="shield"></span>
+          </div>
+          <h3>Die&nbsp;Struktur&nbsp;bewahren</h3>
+          <p>Abschnitte, Gleichungen und Abbildungen behalten ihre Form. Formeln
+             bleiben Formeln — nie zu kaputtem Text zerdrückt.</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-fast" aria-hidden="true">
+            <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span>
+          </div>
+          <h3>Schneller&nbsp;verstehen</h3>
+          <p>Eine strukturierte Zusammenfassung in Minuten, jede Zeile verankert
+             an der genauen Stelle im Original.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · BENTO ============ -->
+  <section class="bento-sec" id="bento">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>Alles auf einen Blick</p>
+      <h2 class="section-title reveal" data-reveal>Gebaut um eine Idee: den Kern.</h2>
+
+      <div class="bento">
+        <div class="b-tile b-big tilt reveal" data-reveal>
+          <span class="b-kicker">Local-first</span>
+          <h3>Nichts verlässt<br />Ihren Rechner.</h3>
+          <p>Extraktion, Ranking und Bewertung laufen alle auf Ihrem eigenen Gerät. Die Cloud ist nie erforderlich.</p>
+          <div class="b-lockwrap" aria-hidden="true"><span class="b-lock">🔒</span></div>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">0.87</span>
+          <p>F1 bei der Kernsatz-Extraktion.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">28<i>+</i></span>
+          <p>Handabgestimmte Salienz-Regeln, jede in klarer Sprache erklärt.</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <div class="b-formula">A(Q,K,V)=softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          <p>Formeln bleiben Formeln — bewahrt, nicht zu kaputtem Text zerdrückt.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">Ä/A</span>
+          <p>Zweisprachige Paper — Deutsch &amp; Englisch — sauber gelesen.</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">⌁</span>
+          <p>Gescannte PDFs per OCR direkt auf dem Gerät.</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <span class="b-kicker">Open Source</span>
+          <h3>MIT-Lizenz. Jede Zeile prüfbar.</h3>
+          <p>Die ganze Pipeline ist auf GitHub — keine Blackbox.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 · DEMO ============ -->
+  <section class="demo" id="demo">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>In Aktion sehen</p>
+      <h2 class="section-title reveal" data-reveal>Von 14 Seiten zum Wesentlichen.</h2>
+
+      <div class="demo-stage reveal" data-reveal>
+        <div class="paper" id="paperPane">
+          <div class="scan-beam" id="scanBeam" aria-hidden="true"></div>
+          <p class="paper-title">Aufmerksamkeitsgesteuerte spärliche<br />Transformer für die Langdokument-Suche</p>
+          <p class="paper-auth">M. Hoffmann, L. Schäfer, T. Weber · 2025</p>
+          <span class="ln w90"></span><span class="ln w98"></span><span class="ln w72"></span>
+          <span class="ln w95"></span><span class="ln w60"></span>
+          <div class="paper-fig"><span>Abb. 3 — Suchlatenz vs. Dokumentlänge</span></div>
+          <span class="ln w88"></span><span class="ln w93"></span><span class="ln w50"></span>
+          <div class="paper-formula">A(Q,K,V)=softmax(QKᵀ⁄√d<sub>k</sub>)·M&thinsp;V</div>
+          <span class="ln w96"></span><span class="ln w70"></span><span class="ln w84"></span>
+          <span class="ln w40"></span>
+        </div>
+
+        <div class="output" id="outputPane">
+          <div class="out-head">
+            <span class="out-status" id="outStatus">● Analyse läuft</span>
+            <span class="demo-dots" id="demoDots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="out-meta">Paper&nbsp;Core</span>
+          </div>
+          <h4 class="out-label">Kernzusammenfassung</h4>
+          <p class="typed" id="typeTarget"></p>
+          <h4 class="out-label delay-kw">Schlüsselwörter</h4>
+          <div class="chips" id="kwChips"></div>
+          <h4 class="out-label delay-fx">Bewahrte Formel</h4>
+          <div class="out-formula" id="formulaOut">
+            Attention(Q,K,V)=softmax<span class="paren">(</span>
+            <span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span>
+            <span class="paren">)</span>&thinsp;M&thinsp;V
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8 · BEFORE / AFTER ============ -->
+  <section class="ba" id="ba">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>Vorher &amp; nachher</p>
+      <h2 class="section-title reveal" data-reveal>Ziehen Sie, um den Unterschied zu sehen.</h2>
+
+      <div class="ba-stage reveal" id="baStage" data-reveal>
+        <div class="ba-pane ba-before">
+          <span class="ba-badge ba-badge-r">Original · 14 Seiten</span>
+          <div class="ba-dense">
+            <span class="ln w92"></span><span class="ln w98"></span><span class="ln w85"></span><span class="ln w95"></span>
+            <span class="ln w70"></span><span class="ln w90"></span><span class="ln w99"></span><span class="ln w60"></span>
+            <span class="ln w88"></span><span class="ln w94"></span><span class="ln w76"></span><span class="ln w91"></span>
+            <span class="ln w97"></span><span class="ln w65"></span><span class="ln w89"></span><span class="ln w50"></span>
+            <span class="ln w93"></span><span class="ln w84"></span><span class="ln w96"></span><span class="ln w72"></span>
+          </div>
+        </div>
+        <div class="ba-pane ba-after" id="baAfter">
+          <span class="ba-badge">Paper&nbsp;Core</span>
+          <div class="ba-digest">
+            <h4>Kernzusammenfassung</h4>
+            <p>Ein spärlicher Aufmerksamkeitsmechanismus skaliert die Langdokument-Suche
+               auf O(n&nbsp;log&nbsp;n) und senkt die Latenz um das 4,1-Fache bei nahezu dichter Trefferquote.</p>
+            <div class="ba-chips"><span>spärliche Aufmerksamkeit</span><span>O(n log n)</span><span>4,1× schneller</span></div>
+            <div class="ba-fx">softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          </div>
+        </div>
+        <div class="ba-divider" id="baDivider"><span class="ba-knob" aria-hidden="true">⇄</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 9 · PIPELINE ============ -->
+  <section class="pipe" id="pipe">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>Unter der Haube</p>
+      <h2 class="section-title reveal" data-reveal>Eine lokale Pipeline, von Anfang bis Ende.</h2>
+
+      <div class="pipe-flow" id="pipeFlow">
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h4.5"/></svg></span>
+          <b>PDF</b><span>Jedes Paper</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v9.5"/><path d="M8 9.5l4 4 4-4"/><path d="M5 19h14"/></svg></span>
+          <b>Extrahieren</b><span>Text · Tabellen · Abb.</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+          <b>Salienz</b><span>Das Wichtige ordnen</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+          <b>Struktur</b><span>Formeln &amp; Abschnitte erhalten</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg></span>
+          <b>Kurzfassung</b><span>In Minuten gelesen</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 · PRIVACY ============ -->
+  <section class="priv" id="priv">
+    <div class="wrap priv-grid">
+      <div class="priv-visual reveal" data-reveal aria-hidden="true">
+        <div class="device">
+          <div class="device-screen"><span class="device-lock">🔒</span></div>
+          <div class="device-base"></div>
+        </div>
+        <div class="cloud-no">
+          <span class="cloud">☁</span>
+          <span class="cloud-slash"></span>
+        </div>
+        <span class="dot-line d1"></span><span class="dot-line d2"></span>
+      </div>
+      <div class="priv-copy">
+        <p class="eyebrow reveal" data-reveal>Local-first</p>
+        <h2 class="section-title left reveal" data-reveal>Ihre Paper verlassen nie Ihr Gerät.</h2>
+        <ul class="priv-list">
+          <li class="reveal" data-reveal>Keine Uploads, keine Konten, kein Tracking</li>
+          <li class="reveal" data-reveal>Läuft komplett offline — sogar im Flugzeug</li>
+          <li class="reveal" data-reveal>Optionales lokales LLM; die Cloud ist nie erforderlich</li>
+          <li class="reveal" data-reveal>Open Source — prüfen Sie jede Zeile selbst</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 · MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>PDF</span><span>·</span><span>Gescannte Seiten</span><span>·</span><span>Deutsch / Englisch</span><span>·</span>
+      <span>Formeln</span><span>·</span><span>Lange Dokumente</span><span>·</span><span>Tabellen</span><span>·</span>
+      <span>Abbildungen</span><span>·</span><span>LaTeX</span><span>·</span>
+      <span>PDF</span><span>·</span><span>Gescannte Seiten</span><span>·</span><span>Deutsch / Englisch</span><span>·</span>
+      <span>Formeln</span><span>·</span><span>Lange Dokumente</span><span>·</span><span>Tabellen</span><span>·</span>
+      <span>Abbildungen</span><span>·</span><span>LaTeX</span><span>·</span>
+    </div>
+  </div>
+
+  <!-- ============ 12 · FAQ ============ -->
+  <section class="faq" id="faq">
+    <div class="wrap faq-wrap">
+      <p class="eyebrow center reveal" data-reveal>Fragen</p>
+      <h2 class="section-title reveal" data-reveal>Gute Fragen, klare Antworten.</h2>
+
+      <div class="faq-list reveal" data-reveal>
+        <details class="faq-item">
+          <summary>Ist das nur ein ChatGPT-Wrapper?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>Nein. Das Salienz-Ranking und die Regel-Engine laufen lokal und erledigen die Kernarbeit. Ein großes Sprachmodell ist optional und standardmäßig aus — Paper Core funktioniert auch ohne es vollständig.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Wie wird meine Privatsphäre geschützt?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>Alles läuft auf Ihrem eigenen Rechner. Nichts wird hochgeladen, es gibt keine Konten, und es funktioniert komplett offline. Sie können den Quellcode selbst prüfen.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Welche Paper kann es lesen?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>Native und gescannte PDFs (per OCR auf dem Gerät), zweisprachige Dokumente (Deutsch / Englisch), lange Paper sowie Inhalte mit Formeln, Tabellen und Abbildungen.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Ist es kostenlos und Open Source?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>Ja. Paper Core steht unter MIT-Lizenz und die ganze Pipeline ist auf GitHub — nichts ist hinter einem Dienst versteckt.</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>Ersetzt es das Lesen des Papers?<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>Nein — es bringt den Kern hervor und verankert jede Zeile zurück an der Originalstelle, damit Sie Ihre Lesezeit auf das Wesentliche verwenden.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 13 · CLOSING ============ -->
+  <section class="closing" id="closing">
+    <div class="hero-glow glow-d" data-parallax="0.2" aria-hidden="true"></div>
+    <div class="wrap center">
+      <h2 class="closing-title reveal" data-reveal>Paper&nbsp;Core.</h2>
+      <p class="closing-sub reveal" data-reveal>Weniger lesen. Mehr verstehen.</p>
+      <div class="hero-actions center reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core testen</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">Auf GitHub ansehen</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Paper Core</span>
+    <span class="foot-mid">Local-first · Open Source · MIT</span>
+    <a href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">github.com/drkiyira-dev/PaperCore</a>
+    <a class="foot-region" href="/brand/regions/" style="color:inherit;text-decoration:none;opacity:.72">🌐 Deutsch ▾</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

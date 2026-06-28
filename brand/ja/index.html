@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paper Core — 論文を理解する、新しいかたち。</title>
+  <meta name="description" content="Paper Core は論文のコアを抽出し、構造と数式を保ったまま、もっと速く理解できるようにします。ローカル優先・オープンソース。" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ============ SPLASH ============ -->
+  <div class="splash" id="splash">
+    <div class="splash-inner">
+      <span class="splash-word">Paper&nbsp;Core.</span>
+      <span class="splash-rule"></span>
+    </div>
+    <span class="splash-skip">クリックでスキップ</span>
+  </div>
+
+  <!-- ============ SCROLL PROGRESS ============ -->
+  <div class="progress" id="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <a class="nav-brand" href="#top">
+      <span class="nav-dot"></span>
+      <span>Paper&nbsp;Core</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#problem">課題</a>
+      <a href="#how">仕組み</a>
+      <a href="#features">機能</a>
+      <a href="#demo">デモ</a>
+      <a href="#faq">FAQ</a>
+      <a class="nav-cta" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub</a>
+      <details class="nav-lang">
+        <summary aria-label="言語"><span class="nav-lang-globe" aria-hidden="true">🌐</span><span class="nav-lang-cur">日本語</span><span class="nav-lang-caret" aria-hidden="true"></span></summary>
+        <div class="nav-lang-menu" role="menu">
+          <a role="menuitem" href="/brand/en/">English</a>
+          <a role="menuitem" href="/brand/ja/" class="is-current" aria-current="true">日本語</a>
+          <a role="menuitem" href="/brand/zh/">中文 · 墨析</a>
+          <a role="menuitem" href="/brand/ko/">한국어</a>
+          <a role="menuitem" href="/brand/de/">Deutsch</a>
+        </div>
+      </details>
+    </nav>
+  </header>
+
+  <!-- ============ 1 · HERO ============ -->
+  <section class="hero" id="top">
+    <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="hero-glow glow-a" data-parallax="0.18" aria-hidden="true"></div>
+    <div class="hero-glow glow-b" data-parallax="0.10" aria-hidden="true"></div>
+    <div class="hero-glow glow-c" data-parallax="0.26" aria-hidden="true"></div>
+    <div class="spotlight" id="spotlight" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
+
+    <div class="hero-inner">
+      <p class="eyebrow reveal" data-reveal>ローカル優先 · オープンソース</p>
+      <h1 class="hero-title reveal" data-reveal>Paper&nbsp;Core.</h1>
+      <p class="hero-sub reveal" data-reveal>論文を理解する、新しいかたち。</p>
+      <div class="hero-actions reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core を試す</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub で見る</a>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#stats" aria-label="下へスクロール">
+      <span class="scroll-cue-line"></span>
+    </a>
+  </section>
+
+  <!-- ============ 2 · STATS BAND ============ -->
+  <section class="stats" id="stats">
+    <div class="wrap stats-grid">
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="0.87" data-dec="2">0.00</span>
+        <span class="stat-label">F1 · コア抽出</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="100" data-suf="%">0</span>
+        <span class="stat-label">オンデバイス動作</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="28" data-suf="+">0</span>
+        <span class="stat-label">顕著度ルール</span>
+      </div>
+      <div class="stat reveal" data-reveal>
+        <span class="stat-num" data-to="3">0</span>
+        <span class="stat-label">採点スケール</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3 · PROBLEM ============ -->
+  <section class="problem" id="problem">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>課題</p>
+      <h2 class="big-statement reveal" data-reveal>
+        ページは、多すぎる。<br /><span class="dim">時間は、足りない。</span>
+      </h2>
+      <p class="lead center reveal" data-reveal>
+        研究は速く進む。でも、読むスピードは追いつきません。どの論文も、肝心の
+        コアが前提・記法・散文の山に埋もれています——しかも、本当に必要な数式こそ、
+        ありふれた要約が真っ先に失うものです。
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ 4 · HOW IT WORKS (scrollytelling) ============ -->
+  <section class="how" id="how">
+    <div class="how-track">
+      <div class="how-sticky">
+        <div class="how-head">
+          <p class="eyebrow center">仕組み</p>
+          <h2 class="section-title">4 ステップで、コアへ。</h2>
+        </div>
+        <div class="how-stage">
+          <div class="how-visual" id="howVisual" data-active="0" aria-hidden="true">
+            <div class="v-page v-p3"></div>
+            <div class="v-page v-p2"></div>
+            <div class="v-paper">
+              <div class="v-beam"></div>
+              <div class="v-phead">
+                <span class="v-tag">研究論文 · 14 ページ</span>
+                <span class="v-tl"></span>
+                <span class="v-tl short"></span>
+              </div>
+              <span class="v-ln w92"></span>
+              <span class="v-ln w70 key"></span>
+              <span class="v-ln w96"></span>
+              <div class="v-fig"><span>図2 — 結果</span></div>
+              <span class="v-ln w88 key"></span>
+              <span class="v-ln w78"></span>
+              <div class="v-fx">softmax(QKᵀ ∕ √d<sub>k</sub>)&thinsp;V</div>
+              <span class="v-ln w54 key"></span>
+              <span class="v-ln w84"></span>
+            </div>
+            <div class="v-digest">
+              <span class="vd-title">コア要約</span>
+              <span class="vd-ln"></span><span class="vd-ln"></span><span class="vd-ln short"></span>
+              <div class="vd-chips"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+          <div class="how-right">
+            <ol class="how-steps" id="howSteps">
+              <li class="how-step" data-step="0"><span class="how-num">01</span><div class="how-sb"><b>すべてを読む</b><span>何十ページもの、前提と記法でびっしりの本文。</span></div></li>
+              <li class="how-step" data-step="1"><span class="how-num">02</span><div class="how-sb"><b>全体を読み取る</b><span>Paper Core が文書全体を、構造を保ったまま読み取ります。</span></div></li>
+              <li class="how-step" data-step="2"><span class="how-num">03</span><div class="how-sb"><b>顕著度で順位づけ</b><span>重要な主張・手法・結果が浮かび上がります。</span></div></li>
+              <li class="how-step" data-step="3"><span class="how-num">04</span><div class="how-sb"><b>コアを抽出</b><span>残るのは、数分で読めるダイジェストだけ。</span></div></li>
+              <span class="how-rail" aria-hidden="true"><span class="how-rail-fill" id="howRailFill"></span></span>
+            </ol>
+          </div>
+        </div>
+        <div class="how-hint" id="howHint" aria-hidden="true">
+          <span class="how-hint-txt">スクロールで進む</span>
+          <span class="how-hint-arrow"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 5 · FEATURES ============ -->
+  <section class="features" id="features">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>できること</p>
+      <h2 class="section-title reveal" data-reveal>
+        コアを抽出。構造を保持。もっと速く理解。
+      </h2>
+
+      <div class="cards">
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-core" aria-hidden="true">
+            <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
+            <span class="core-dot"></span>
+          </div>
+          <h3>コアを抽出</h3>
+          <p>顕著度でランクづけした抽出が、重要な主張・手法・結果を浮かび上がらせ、
+             定型文はそっと取り除きます。</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-formula" aria-hidden="true">
+            <span class="fx">∑</span>
+            <span class="shield"></span>
+          </div>
+          <h3>構造を保持</h3>
+          <p>セクション・数式・図はそのままの形で。数式は数式のまま——
+             壊れたテキストに潰しません。</p>
+        </article>
+
+        <article class="card tilt reveal" data-reveal>
+          <div class="card-icon icon-fast" aria-hidden="true">
+            <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span>
+          </div>
+          <h3>もっと速く理解</h3>
+          <p>数分で読める構造化ダイジェスト。すべての行が、原文の該当箇所に
+             紐づいています。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 6 · BENTO ============ -->
+  <section class="bento-sec" id="bento">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>ひと目で、すべて</p>
+      <h2 class="section-title reveal" data-reveal>たったひとつの軸：コア。</h2>
+
+      <div class="bento">
+        <div class="b-tile b-big tilt reveal" data-reveal>
+          <span class="b-kicker">ローカル優先</span>
+          <h3>何も、<br />端末から出ない。</h3>
+          <p>抽出・ランクづけ・採点は、すべてあなたの端末で動作。クラウドは一切不要です。</p>
+          <div class="b-lockwrap" aria-hidden="true"><span class="b-lock">🔒</span></div>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">0.87</span>
+          <p>コア文抽出の F1 スコア。</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-stat">28<i>+</i></span>
+          <p>手調整した顕著度ルール。それぞれ平易な言葉で説明付き。</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <div class="b-formula">A(Q,K,V)=softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          <p>数式は数式のまま——壊れたテキストに潰さず保持します。</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">あ/A</span>
+          <p>日本語・英語の論文も、きれいに読み取り。</p>
+        </div>
+        <div class="b-tile tilt reveal" data-reveal>
+          <span class="b-emoji" aria-hidden="true">⌁</span>
+          <p>スキャン PDF も、オンデバイス OCR で対応。</p>
+        </div>
+        <div class="b-tile b-wide tilt reveal" data-reveal>
+          <span class="b-kicker">オープンソース</span>
+          <h3>MIT ライセンス。すべての行を検証できます。</h3>
+          <p>パイプライン全体が GitHub に——ブラックボックスはありません。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 · DEMO ============ -->
+  <section class="demo" id="demo">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>動かしてみる</p>
+      <h2 class="section-title reveal" data-reveal>14 ページから、肝心なところへ。</h2>
+
+      <div class="demo-stage reveal" data-reveal>
+        <div class="paper" id="paperPane">
+          <div class="scan-beam" id="scanBeam" aria-hidden="true"></div>
+          <p class="paper-title">長文検索のための<br />注意機構ガイド付きスパース Transformer</p>
+          <p class="paper-auth">田中 健・鈴木 彩・佐藤 玲 · 2025</p>
+          <span class="ln w90"></span><span class="ln w98"></span><span class="ln w72"></span>
+          <span class="ln w95"></span><span class="ln w60"></span>
+          <div class="paper-fig"><span>図3 — 検索レイテンシ vs. 文書長</span></div>
+          <span class="ln w88"></span><span class="ln w93"></span><span class="ln w50"></span>
+          <div class="paper-formula">A(Q,K,V)=softmax(QKᵀ⁄√d<sub>k</sub>)·M&thinsp;V</div>
+          <span class="ln w96"></span><span class="ln w70"></span><span class="ln w84"></span>
+          <span class="ln w40"></span>
+        </div>
+
+        <div class="output" id="outputPane">
+          <div class="out-head">
+            <span class="out-status" id="outStatus">● 分析中</span>
+            <span class="demo-dots" id="demoDots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="out-meta">Paper&nbsp;Core</span>
+          </div>
+          <h4 class="out-label">コア要約</h4>
+          <p class="typed" id="typeTarget"></p>
+          <h4 class="out-label delay-kw">キーワード</h4>
+          <div class="chips" id="kwChips"></div>
+          <h4 class="out-label delay-fx">保持された数式</h4>
+          <div class="out-formula" id="formulaOut">
+            Attention(Q,K,V)=softmax<span class="paren">(</span>
+            <span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span>
+            <span class="paren">)</span>&thinsp;M&thinsp;V
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8 · BEFORE / AFTER ============ -->
+  <section class="ba" id="ba">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>ビフォー & アフター</p>
+      <h2 class="section-title reveal" data-reveal>ドラッグして、違いを見る。</h2>
+
+      <div class="ba-stage reveal" id="baStage" data-reveal>
+        <div class="ba-pane ba-before">
+          <span class="ba-badge ba-badge-r">原文 · 14 ページ</span>
+          <div class="ba-dense">
+            <span class="ln w92"></span><span class="ln w98"></span><span class="ln w85"></span><span class="ln w95"></span>
+            <span class="ln w70"></span><span class="ln w90"></span><span class="ln w99"></span><span class="ln w60"></span>
+            <span class="ln w88"></span><span class="ln w94"></span><span class="ln w76"></span><span class="ln w91"></span>
+            <span class="ln w97"></span><span class="ln w65"></span><span class="ln w89"></span><span class="ln w50"></span>
+            <span class="ln w93"></span><span class="ln w84"></span><span class="ln w96"></span><span class="ln w72"></span>
+          </div>
+        </div>
+        <div class="ba-pane ba-after" id="baAfter">
+          <span class="ba-badge">Paper&nbsp;Core</span>
+          <div class="ba-digest">
+            <h4>コア要約</h4>
+            <p>スパースな注意機構が長文検索を O(n&nbsp;log&nbsp;n) にスケールさせ、
+               レイテンシを 4.1 倍削減。再現率は密モデルとほぼ同等です。</p>
+            <div class="ba-chips"><span>スパース注意</span><span>O(n log n)</span><span>4.1倍高速</span></div>
+            <div class="ba-fx">softmax<span class="paren">(</span><span class="frac"><span class="num">QK<sup>T</sup></span><span class="den">√d<sub>k</sub></span></span><span class="paren">)</span>&thinsp;V</div>
+          </div>
+        </div>
+        <div class="ba-divider" id="baDivider"><span class="ba-knob" aria-hidden="true">⇄</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 9 · PIPELINE ============ -->
+  <section class="pipe" id="pipe">
+    <div class="wrap">
+      <p class="eyebrow center reveal" data-reveal>仕組みの中身</p>
+      <h2 class="section-title reveal" data-reveal>端から端まで、ローカルのパイプライン。</h2>
+
+      <div class="pipe-flow" id="pipeFlow">
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h4.5"/></svg></span>
+          <b>PDF</b><span>どんな論文も</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v9.5"/><path d="M8 9.5l4 4 4-4"/><path d="M5 19h14"/></svg></span>
+          <b>抽出</b><span>本文 · 表 · 図</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.6"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg></span>
+          <b>顕著度</b><span>重要度で順位づけ</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg></span>
+          <b>構造</b><span>数式とセクションを保持</span>
+        </div>
+        <span class="plink"></span>
+        <div class="pnode">
+          <span class="pn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5.5"/></svg></span>
+          <b>ダイジェスト</b><span>数分で読める</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 · PRIVACY ============ -->
+  <section class="priv" id="priv">
+    <div class="wrap priv-grid">
+      <div class="priv-visual reveal" data-reveal aria-hidden="true">
+        <div class="device">
+          <div class="device-screen"><span class="device-lock">🔒</span></div>
+          <div class="device-base"></div>
+        </div>
+        <div class="cloud-no">
+          <span class="cloud">☁</span>
+          <span class="cloud-slash"></span>
+        </div>
+        <span class="dot-line d1"></span><span class="dot-line d2"></span>
+      </div>
+      <div class="priv-copy">
+        <p class="eyebrow reveal" data-reveal>ローカル優先</p>
+        <h2 class="section-title left reveal" data-reveal>あなたの論文は、端末から出ません。</h2>
+        <ul class="priv-list">
+          <li class="reveal" data-reveal>アップロードなし、アカウントなし、追跡なし</li>
+          <li class="reveal" data-reveal>完全オフラインで動作——機内でも</li>
+          <li class="reveal" data-reveal>ローカル LLM はオプション。クラウドは一切不要</li>
+          <li class="reveal" data-reveal>オープンソース——すべての行を自分で検証できます</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 · MARQUEE ============ -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+      <span>PDF</span><span>·</span><span>スキャン</span><span>·</span><span>日本語・英語</span><span>·</span>
+      <span>数式</span><span>·</span><span>長文</span><span>·</span><span>表</span><span>·</span>
+      <span>図</span><span>·</span><span>LaTeX</span><span>·</span>
+      <span>PDF</span><span>·</span><span>スキャン</span><span>·</span><span>日本語・英語</span><span>·</span>
+      <span>数式</span><span>·</span><span>長文</span><span>·</span><span>表</span><span>·</span>
+      <span>図</span><span>·</span><span>LaTeX</span><span>·</span>
+    </div>
+  </div>
+
+  <!-- ============ 12 · FAQ ============ -->
+  <section class="faq" id="faq">
+    <div class="wrap faq-wrap">
+      <p class="eyebrow center reveal" data-reveal>よくある質問</p>
+      <h2 class="section-title reveal" data-reveal>良い質問に、まっすぐな答えを。</h2>
+
+      <div class="faq-list reveal" data-reveal>
+        <details class="faq-item">
+          <summary>これは ChatGPT のラッパーですか？<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>いいえ。顕著度ランクづけとルールエンジンがローカルで動き、中心的な処理を担います。大規模言語モデルはオプションで、初期状態はオフ——Paper Core はオフのままでも完全に機能します。</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>プライバシーはどう守られますか？<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>すべてがあなたの端末で動作します。何もアップロードされず、アカウントも不要、完全にオフラインで動きます。ソースコードでご確認いただけます。</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>どんな論文を読めますか？<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>ネイティブおよびスキャン PDF（オンデバイス OCR）、日本語・英語の文書、長い論文、数式・表・図を含む内容に対応します。</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>無料でオープンソースですか？<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>はい。Paper Core は MIT ライセンスで、パイプライン全体が GitHub にあります——サービスの裏に隠れたものはありません。</p></div>
+        </details>
+        <details class="faq-item">
+          <summary>論文を読む代わりになりますか？<span class="faq-ic" aria-hidden="true"></span></summary>
+          <div class="faq-a"><p>いいえ——コアを浮かび上がらせ、すべての行を原文の該当箇所に紐づけます。だから、本当に大切なところに読む時間を使えます。</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 13 · CLOSING ============ -->
+  <section class="closing" id="closing">
+    <div class="hero-glow glow-d" data-parallax="0.2" aria-hidden="true"></div>
+    <div class="wrap center">
+      <h2 class="closing-title reveal" data-reveal>Paper&nbsp;Core.</h2>
+      <p class="closing-sub reveal" data-reveal>読む量は減らし、理解は深く。</p>
+      <div class="hero-actions center reveal" data-reveal>
+        <a class="btn btn-primary" href="http://127.0.0.1:5003" target="_blank" rel="noopener">Paper Core を試す</a>
+        <a class="btn btn-ghost" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">GitHub で見る</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Paper Core</span>
+    <span class="foot-mid">ローカル優先 · オープンソース · MIT</span>
+    <a href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">github.com/drkiyira-dev/PaperCore</a>
+    <a class="foot-region" href="/brand/regions/" style="color:inherit;text-decoration:none;opacity:.72">🌐 日本語 ▾</a>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
