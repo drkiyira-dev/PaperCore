@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PaperCore · AI 学术论文分析系统</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=30">
-    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=24" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -498,6 +498,71 @@
     </main>
 </div>
 
-<script src="{{ url_for('static', filename='js/main.js') }}?v=12"></script>
+<!-- ===== 体验区（公网试用）UI · 仅 EXPERIENCE_MODE 下由 main.js 显示；本地版恒隐藏 ===== -->
+<style>
+.exp-banner{position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;
+  gap:14px;flex-wrap:wrap;padding:9px 16px;background:linear-gradient(90deg,#fbf3e6,#f6e8d2);
+  border-bottom:1px solid var(--color-border,#e8dcc6);font-size:13px;color:#7a5a2e}
+.exp-banner b{color:#a8431f}
+.exp-banner-link{color:var(--color-accent,#b5793a);text-decoration:none;font-weight:600;white-space:nowrap}
+.exp-banner-link:hover{text-decoration:underline}
+.exp-mask{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:rgba(40,30,15,.45);backdrop-filter:blur(3px);padding:20px}
+.exp-modal{background:#fffdf8;border:1px solid var(--color-border,#ece0c8);border-radius:18px;max-width:430px;
+  width:100%;padding:30px 28px;text-align:center;box-shadow:0 24px 60px rgba(80,50,10,.22)}
+.exp-modal-icon{font-size:38px;line-height:1}
+.exp-modal-title{margin:14px 0 10px;font-size:19px;color:#3d2c14}
+.exp-modal-body{font-size:14px;line-height:1.75;color:#6b5536;margin:0 0 20px}
+.exp-modal-body a{color:var(--color-accent,#b5793a);font-weight:600}
+.exp-modal-body b{color:#a8431f}
+.exp-btn-primary{display:inline-block;width:100%;padding:12px 18px;border:none;border-radius:11px;
+  background:linear-gradient(135deg,#cf9450,#b5793a);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.exp-btn-primary:hover{filter:brightness(1.05)}
+.exp-btn-text{margin-top:14px;background:none;border:none;color:#9a8a6e;font-size:13px;cursor:pointer}
+.exp-btn-text:hover{color:#6b5536}
+.exp-form{display:flex;gap:8px}
+.exp-form .exp-btn-primary{width:auto;white-space:nowrap}
+.exp-input{flex:1;padding:11px 14px;border:1px solid var(--color-border,#e1d3b8);border-radius:10px;font-size:14px;background:#fff;color:#3d2c14}
+.exp-input:focus{outline:none;border-color:var(--color-accent,#b5793a)}
+.exp-form-note{font-size:12px;color:#9b8a6a;margin:10px 0 0}
+#expQuotaBadge{background:#fbf3e6;color:#a8702e;border:1px solid #ecd9b8}
+</style>
+
+<div id="expBanner" class="exp-banner" style="display:none">
+    <span data-i18n="exp.banner">☁️ 云端体验版 · 尝鲜模式，<b>请勿上传涉密 / 隐私论文</b></span>
+    <a class="exp-banner-link" href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">想数据永不离机？用本地版 →</a>
+</div>
+
+<div id="expDisclaimer" class="exp-mask" style="display:none">
+    <div class="exp-modal">
+        <div class="exp-modal-icon">☁️</div>
+        <h3 class="exp-modal-title">云端 · 尝鲜 · 敏感勿传</h3>
+        <p class="exp-modal-body" data-i18n="exp.disclaimer">
+            这是 PaperCore 的<b>云端体验版</b>，上传的论文会发送到云端大模型做分析。<br>
+            请<b>不要上传未发表稿件、涉密或隐私论文</b>。<br>
+            需要「数据永不离机」？请用<a href="https://github.com/drkiyira-dev/PaperCore" target="_blank" rel="noopener">本地开源版</a>，完全离线运行。
+        </p>
+        <button id="expConsentBtn" class="exp-btn-primary">我已了解，开始体验</button>
+    </div>
+</div>
+
+<div id="expLimit" class="exp-mask" style="display:none">
+    <div class="exp-modal">
+        <div class="exp-modal-icon">🎯</div>
+        <h3 class="exp-modal-title">今天的免费额度用完啦</h3>
+        <p class="exp-modal-body" data-i18n="exp.limit">
+            体验版每天可免费分析 <b id="expLimitQuota">5</b> 篇。<br>
+            留个邮箱，<b>上线 Pro / 更多额度时第一时间通知你</b>。
+        </p>
+        <div class="exp-form">
+            <input id="expEmail" class="exp-input" type="email" placeholder="you@example.com" autocomplete="email">
+            <button id="expWaitlistBtn" class="exp-btn-primary">通知我</button>
+        </div>
+        <p class="exp-form-note" id="expWaitlistNote">邮箱仅用于上线通知，不做他用。</p>
+        <button id="expLimitClose" class="exp-btn-text">先不用，关闭</button>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}?v=15"></script>
 </body>
 </html>

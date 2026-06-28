@@ -260,12 +260,15 @@ RULES = [
 # 最近的句末边界（中文标点/换行直接算；英文 . ! ? 需后接空白才算，避开 3.14、Fig.），
 # 并设字数上限防跑飞。文本本身的质量（docling 已理顺）不在这里管，这里只管「截得齐不齐」。
 # -----------------------------------------------------------------------------
-_SNIPPET_HARD = '。！？\n'   # 中文句末 + 换行：直接算边界
+_SNIPPET_HARD = '。！？'      # 中文句末：直接算边界（去掉 \n——裸换行多是 PDF 软折行，非句末）
 _SNIPPET_SOFT = '.!?'       # 英文句末：需后接空白才算边界
 
 
 def _is_sentence_end(text, i):
-    """text[i-1] 是否构成一个句末边界（i 为「边界右侧」下标）。"""
+    """text[i-1] 是否构成一个句末边界（i 为「边界右侧」下标）。
+    关键：**裸换行不算句末**——PDF 常在一句话中间折行（如 'available GPU\\nmemory'），
+    旧版把 \\n 当硬边界会从折行处截断整句。这里只认：中文句末标点、英文 .!? 后接空白、
+    或段落级换行（空行 \\n\\n）。"""
     if i <= 0:
         return True
     c = text[i - 1]
@@ -274,11 +277,23 @@ def _is_sentence_end(text, i):
     if c in _SNIPPET_SOFT:
         nxt = text[i] if i < len(text) else ' '
         return nxt.isspace()
+    if c == '\n':
+        return i >= 2 and text[i - 2] == '\n'   # 仅「空行=段落」才算边界
     return False
 
 
-def _sentence_snippet(text, start, end, max_chars=240):
-    """把命中 [start, end) 向两侧扩到完整句子边界，得到「不截半」的原文片段。"""
+def _clean_snippet(s):
+    """片段显示清理：英文连字符折行还原、句内软换行并成空格、压多余空白。"""
+    s = re.sub(r'([A-Za-z])-\s*\n\s*([a-z])', r'\1\2', s)  # schedul-\n ing -> scheduling
+    s = re.sub(r'\s*\n\s*', ' ', s)                        # 句内软换行 -> 空格
+    s = re.sub(r'[ \t]{2,}', ' ', s)
+    return s.strip()
+
+
+def _sentence_snippet(text, start, end, max_chars=320):
+    """把命中 [start, end) 向两侧扩到完整句子边界。
+    返回 (清理后的片段文本, 原文起 L, 原文止 R)——L/R 是对 text 的原始偏移，
+    供「原文对照」按整句高亮（与卡片显示的片段一致，不再左截半/右截半）。"""
     L = start
     lo = max(0, start - max_chars)
     while L > lo and not _is_sentence_end(text, L):
@@ -292,7 +307,7 @@ def _sentence_snippet(text, start, end, max_chars=240):
         sp = text.rfind(' ', end, R)
         if sp > end:
             R = sp
-    return text[L:R].strip()
+    return _clean_snippet(text[L:R]), L, R
 
 
 def match_rules(text):
@@ -302,13 +317,16 @@ def match_rules(text):
         # IGNORECASE：让英文触发词不区分大小写；对中文无影响。
         for m in re.finditer(rule['pattern'], text, flags=re.IGNORECASE):
             sal, factors = compute_salience(m.group(0), rule, tfidf, return_breakdown=True)
+            snip, snip_s, snip_e = _sentence_snippet(text, m.start(), m.end())
             matches.append({
                 "rule": rule['name'],
                 "description": rule['description'],
                 "note": rule.get('note', ''),  # 人话说明：keep=这是什么核心 / review=为什么是水+建议
                 "start": m.start(),
                 "end": m.end(),
-                "snippet": _sentence_snippet(text, m.start(), m.end()),
+                "snippet": snip,
+                "snip_start": snip_s,   # 整句窗口在原文的偏移，供「原文对照」高亮整句
+                "snip_end": snip_e,
                 "salience": sal,
                 "salience_factors": factors,  # 四特征分解，供「为什么显著度高」展示
                 "action": rule.get('action', 'review'),

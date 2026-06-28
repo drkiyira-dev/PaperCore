@@ -64,14 +64,21 @@ def get_status():
     used = len(stamps)
     remaining = max(0, QUOTA_LIMIT - used)
     can_use = used < QUOTA_LIMIT
+    oldest = min(stamps) if stamps else None
+    newest = max(stamps) if stamps else None
     # 满额时，下一次解锁 = 最早那次调用 + 窗口
-    locked_until = None if can_use else (min(stamps) + WINDOW_SECONDS)
+    locked_until = None if can_use else (oldest + WINDOW_SECONDS)
+    # 即便未满额也给「回补 / 全部重置」时刻，供前端常驻显示重置时间（不只锁定时才有）：
+    next_recover = (oldest + WINDOW_SECONDS) if stamps else None   # 下一格额度回补时刻（最早一次过期）
+    full_reset   = (newest + WINDOW_SECONDS) if stamps else None   # 全部用量过期、回满 5/5 的时刻
     return {
         "used": used,
         "remaining": remaining,
         "limit": QUOTA_LIMIT,
         "window_seconds": WINDOW_SECONDS,
         "locked_until": locked_until,
+        "next_recover": next_recover,
+        "full_reset": full_reset,
         "can_use": can_use,
     }
 

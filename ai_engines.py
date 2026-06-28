@@ -6,7 +6,9 @@ import re
 import jieba
 import jieba.analyse
 
-DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+# deepseek-chat 这个别名 2026-07-24 起官方停用（迁移到显式模型名），默认改用 deepseek-v4-flash。
+# 仍可用 DEEPSEEK_MODEL 环境变量覆盖。
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-v4-flash")
 
 # ==================== 1. 关键词映射字典（Gemini 设计） ====================
 cs_keyword_map = {
@@ -166,9 +168,18 @@ class CloudAPI:
     }
 
     @staticmethod
-    def call(platform, api_key, prompt):
+    def call(platform, api_key, prompt, return_usage=False):
+        """调用云端 chat API。
+
+        return_usage=True 时返回 (ok, result, usage)，usage 为 OpenAI/DeepSeek
+        兼容响应里的 {prompt_tokens, completion_tokens, ...}（供体验区成本埋点）；
+        默认 False 返回 (ok, result)，与原签名兼容，老调用方无需改动。
+        """
+        def _ret(ok, result, usage=None):
+            return (ok, result, usage) if return_usage else (ok, result)
+
         if platform not in CloudAPI.PLATFORMS:
-            return False, "不支持的平台"
+            return _ret(False, "不支持的平台")
         cfg = CloudAPI.PLATFORMS[platform]
         headers = cfg["headers_template"].copy()
         headers["Authorization"] = headers["Authorization"].format(api_key=api_key)
@@ -196,9 +207,9 @@ class CloudAPI:
                 result = data["output"]["choices"][0]["message"]["content"]
             else:
                 result = data["choices"][0]["message"]["content"]
-            return True, result
+            return _ret(True, result, data.get("usage"))
         except Exception as e:
-            return False, f"调用失败：{str(e)}"
+            return _ret(False, f"调用失败：{str(e)}")
 
     @classmethod
     def polish(cls, api_key, platform, text):

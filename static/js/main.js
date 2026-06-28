@@ -8,9 +8,11 @@ let logTimer = null;
 
 // === Check backend API key status ===
 let serverKeyConfigured = false;
+let experienceMode = false;   // 体验区（公网试用）形态，由 /api/status 决定；本地版恒 false
 
 function applyStatus(data) {
     if (!data) return;
+    if (data.experience_mode) { setupExperience(data); return; }   // 体验区走专属 UI，不应用本地档功能
     if (data.api_key_configured) {
         serverKeyConfigured = true;
         const input = document.getElementById('apiKeyInput');
@@ -47,6 +49,7 @@ function fmtRecoverTime(epochSec) {
 }
 
 function applyV4ProStatus(data) {
+    if (experienceMode) return;   // 体验区不展示 v4pro 本地档
     if (!data || !data.v4pro_available) return;
     const sec    = document.getElementById('v4proSection');
     const quota  = data.v4pro_quota || {};
@@ -69,8 +72,17 @@ function applyV4ProStatus(data) {
         if (desc) desc.textContent = `今日额度已用尽 · 预计 ${t} 恢复`;
         if (toggle) toggle.title = `配额耗尽，预计 ${t} 恢复`;
     } else if (desc) {
-        desc.textContent = '资深评审视角，更深更长的结构化分析 · 5 小时内限用 5 次';
-        if (toggle) toggle.title = '';
+        // 没用尽也显示重置时间：用了几次就告诉用户「下次额度几点回补」+ 悬浮「几点全部重置」
+        if (quota.used > 0 && quota.next_recover) {
+            const tn = fmtRecoverTime(quota.next_recover);
+            desc.textContent = `资深评审视角 · 5 小时滚动限 5 次 · 下次额度 ${tn} 回补`;
+            if (toggle) toggle.title = quota.full_reset
+                ? `下次额度 ${tn} 回补 · ${fmtRecoverTime(quota.full_reset)} 全部重置`
+                : '';
+        } else {
+            desc.textContent = '资深评审视角，更深更长的结构化分析 · 5 小时内限用 5 次';
+            if (toggle) toggle.title = '';
+        }
     }
 }
 
@@ -319,6 +331,7 @@ function startAnalysis() {
     if (useV4Pro) formData.append('use_v4pro', '1');
     if (apiKey) formData.append('api_key', apiKey);
     if (useLocalAi) formData.append('use_local_ai', '1');
+    formData.append('locale', localStorage.getItem('papercore_lang') || 'zh');   // 界面语言 → 让 AI 摘要按此语言输出
 
     // 两种来源：新上传走 /api/upload（带 file）；从「我的文档」预载走 reanalyze
     // （文件已在服务器 uploads/，只发文件名 + 参数，不重新传文件本体）。
@@ -344,6 +357,8 @@ function startAnalysis() {
             if (data.code === 200) {
                 sessionStorage.setItem('uploadResult', JSON.stringify(data.data));
                 window.location.href = '/result';
+            } else if (data.code === 429 || (data.data && data.data.quota_exhausted)) {
+                showExpLimit(data.data && data.data.quota);   // 体验区到限 → 留邮箱弹窗
             } else {
                 showError('处理失败：' + data.msg);
             }
@@ -450,4 +465,87 @@ document.querySelectorAll('.nav-item[data-page]').forEach(item => {
         e.preventDefault();
         switchPage(item.dataset.page);
     });
+});
+
+// ============ 体验区（公网试用）前端 · 仅 experience_mode 下激活 ============
+function getCookie(name) {
+    return document.cookie.split('; ').find(c => c.startsWith(name + '='))?.split('=')[1];
+}
+
+function setupExperience(data) {
+    if (!data || !data.experience_mode) return;
+    experienceMode = true;
+
+    // 1. 顶部横幅（云端·尝鲜·敏感勿传）
+    const banner = document.getElementById('expBanner');
+    if (banner) banner.style.display = 'flex';
+
+    // 2. 顶栏徽标改「云端体验版」+ 配额小标
+    const tb = document.querySelector('#page-workbench .topbar .status-badges');
+    if (tb) tb.innerHTML = '<span class="badge">☁️ 云端体验版</span><span class="badge" id="expQuotaBadge"></span>';
+    updateExpQuota(data.experience_quota);
+
+    // 3. 隐藏本地版专属入口：跨访客泄露面（文档/历史/报告/设置）+ 误导面（自填 Key）
+    document.querySelectorAll(
+        '.sidebar-nav a[href="/documents"],.sidebar-nav a[href="/history"],' +
+        '.sidebar-nav a[href="/reports"],.sidebar-nav a[href="/settings"]'
+    ).forEach(a => { a.style.display = 'none'; });
+    const keySec = document.querySelector('.api-key-section');
+    if (keySec) keySec.style.display = 'none';
+    // localAiSection / v4proSection 默认就隐藏，且 applyStatus 在体验区已提前 return，无需处理
+
+    // 4. 首访免责弹窗（同意后写 cookie，不再弹）
+    if (!getCookie('pc_consent')) {
+        const d = document.getElementById('expDisclaimer');
+        if (d) d.style.display = 'flex';
+    }
+}
+
+function updateExpQuota(q) {
+    const badge = document.getElementById('expQuotaBadge');
+    if (!badge || !q) return;
+    const total = q.daily_quota || 5;
+    const rem = (q.remaining == null) ? total : q.remaining;
+    const tpl = (window.pcI18n && window.pcI18n.key('exp.quota')) || '今日免费额度 {n}/{t}';
+    badge.textContent = tpl.replace('{n}', rem).replace('{t}', total);
+    badge.style.display = 'inline-block';
+}
+
+function showExpLimit(quota) {
+    const m = document.getElementById('expLimit');
+    if (!m) return;
+    const qEl = document.getElementById('expLimitQuota');
+    if (qEl && quota && quota.daily_quota) qEl.textContent = quota.daily_quota;
+    m.style.display = 'flex';
+}
+
+// 同意免责
+document.getElementById('expConsentBtn')?.addEventListener('click', () => {
+    document.cookie = 'pc_consent=1; max-age=31536000; path=/; samesite=Lax';
+    const d = document.getElementById('expDisclaimer');
+    if (d) d.style.display = 'none';
+});
+
+// 关闭到限弹窗
+document.getElementById('expLimitClose')?.addEventListener('click', () => {
+    const m = document.getElementById('expLimit');
+    if (m) m.style.display = 'none';
+});
+
+// 留邮箱提交
+document.getElementById('expWaitlistBtn')?.addEventListener('click', () => {
+    const input = document.getElementById('expEmail');
+    const note = document.getElementById('expWaitlistNote');
+    const email = (input?.value || '').trim();
+    const k = (key, fallback) => (window.pcI18n && window.pcI18n.key(key)) || fallback;
+    const setNote = (msg, ok) => { if (note) { note.textContent = msg; note.style.color = ok ? '#2e7d32' : '#c0392b'; } };
+    if (!email) { setNote(k('exp.wl.needEmail', '请先填邮箱'), false); return; }
+    fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'limit' })
+    }).then(r => r.json()).then(j => {
+        setNote(k(j.code === 200 ? 'exp.wl.ok' : 'exp.wl.fail', j.msg || ''), j.code === 200);
+        if (j.code === 200 && input) input.disabled = true;
+    }).catch(() => setNote(k('exp.wl.netErr', '网络错误，稍后再试'), false));
 });

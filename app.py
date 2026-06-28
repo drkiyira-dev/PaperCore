@@ -20,7 +20,8 @@ os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 
 import json
 import time
-from flask import Flask, request, jsonify, render_template, send_from_directory, Response
+import threading
+from flask import Flask, request, jsonify, render_template, send_from_directory, Response, redirect
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from docling.document_converter import DocumentConverter
@@ -36,6 +37,7 @@ import history  # 本地分析历史（local-first 持久化，见 history.py）
 import docnames  # 上传文件「原始中文名」映射（见 docnames.py）
 import report   # 结构化报告生成（报告中心 / 批量导出，见 report.py）
 import usage    # v4pro 高级模式滑动配额（见 usage.py）
+import experience  # 体验区（公网试用）：按访客配额/熔断/留邮箱/成本埋点（仅 EXPERIENCE_MODE=1 启用，见 experience.py）
 
 # docling 可选依赖，失败时降级到 pdfplumber。
 # 关键：关掉 docling 自带 OCR（do_ocr=False）——它对中文扫描件会吐乱码且非空，
@@ -936,10 +938,35 @@ def process_content(text, mode='extract'):
 
 # ==================== 路由处理 ====================
 
+# 体验区（EXPERIENCE_MODE）下关闭这些「会列出他人数据」或「本地版专属 / 烧钱」的
+# 页面与接口——隐私红线（决策 D）：公网多访客时绝不能让访客 A 看到访客 B 的论文。
+# 服务端强制拦截，与前端隐藏入口形成双保险。
+_EXP_BLOCKED = ('/history', '/documents', '/reports', '/settings',
+                '/api/history', '/api/documents', '/api/ai/enhance')
+
+
+@app.before_request
+def _experience_guard():
+    if not experience.is_on():
+        return None
+    p = request.path
+    for pre in _EXP_BLOCKED:
+        if p == pre or p.startswith(pre + '/'):
+            if p.startswith('/api/'):
+                return jsonify({"code": 403, "msg": "体验区不提供该功能"}), 403
+            return redirect('/')
+    return None
+
+
 @app.route('/')
 def index():
-    """主页"""
-    return render_template('index.html')
+    """主页。体验区形态下顺手给访客下发 pc_vid（按访客配额用）。"""
+    resp = Response(render_template('index.html'))
+    if experience.is_on():
+        vid, is_new = _get_or_make_vid()
+        if is_new:
+            resp.set_cookie('pc_vid', vid, max_age=15552000, httponly=True, samesite='Lax')
+    return resp
 
 
 @app.route('/result')
@@ -1106,15 +1133,80 @@ def about_page():
 
 @app.route('/brand/')
 def brand_page():
-    """产品介绍 / 品牌广告页（brand/warm，自包含单文件；brand 本身零改动）。
-    带斜杠的规则会让 /brand 自动 308 跳到 /brand/，使相对资源 style.css/script.js 正确解析。"""
-    return send_from_directory(os.path.join(app.root_path, 'brand', 'warm'), 'index.html')
+    """品牌页入口：默认英语。语言由用户在 /brand/regions/ 自选（不记忆、不自动跳、不按 IP）。"""
+    return redirect('/brand/en/')
+
+
+@app.route('/brand/regions/')
+def brand_regions_page():
+    """语言/地区选择页（独立自包含单文件）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'regions'), 'index.html')
+
+
+@app.route('/brand/en/')
+def brand_en_page():
+    """英文品牌页（warm 副本 + 语言入口；warm 原件冻结不动）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'en'), 'index.html')
+
+
+@app.route('/brand/en/<path:filename>')
+def brand_en_assets(filename):
+    """发布 brand/en 下的静态资源。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'en'), filename)
+
+
+@app.route('/brand/zh/')
+def brand_zh_page():
+    """中文品牌页「墨析」（独立内容版：文案 + Demo 论文中文化）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'zh'), 'index.html')
+
+
+@app.route('/brand/zh/<path:filename>')
+def brand_zh_assets(filename):
+    """发布 brand/zh 下的静态资源。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'zh'), filename)
 
 
 @app.route('/brand/<path:filename>')
 def brand_assets(filename):
     """发布 brand/warm 下的静态资源（style.css / script.js）。"""
     return send_from_directory(os.path.join(app.root_path, 'brand', 'warm'), filename)
+
+
+@app.route('/brand/ja/')
+def brand_ja_page():
+    """日语品牌广告页（brand/ja，独立内容版：文案 + Demo 示例论文均日语化）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'ja'), 'index.html')
+
+
+@app.route('/brand/ja/<path:filename>')
+def brand_ja_assets(filename):
+    """发布 brand/ja 下的静态资源（style.css / script.js）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'ja'), filename)
+
+
+@app.route('/brand/ko/')
+def brand_ko_page():
+    """韩语品牌广告页（brand/ko，独立内容版：文案 + Demo 示例论文均韩语化）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'ko'), 'index.html')
+
+
+@app.route('/brand/ko/<path:filename>')
+def brand_ko_assets(filename):
+    """发布 brand/ko 下的静态资源（style.css / script.js）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'ko'), filename)
+
+
+@app.route('/brand/de/')
+def brand_de_page():
+    """德语品牌广告页（brand/de，独立内容版：文案 + Demo 示例论文均德语化）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'de'), 'index.html')
+
+
+@app.route('/brand/de/<path:filename>')
+def brand_de_assets(filename):
+    """发布 brand/de 下的静态资源（style.css / script.js）。"""
+    return send_from_directory(os.path.join(app.root_path, 'brand', 'de'), filename)
 
 
 @app.route('/settings')
@@ -1306,6 +1398,16 @@ def upload_file():
     if not allowed_file(f.filename):
         return jsonify({"code": 400, "msg": "不支持的文件格式，请上传 PDF/DOCX/TXT/MD"}), 400
 
+    # 体验区：到限的访客在落盘前就拦下——不写磁盘、不跑 OCR，省算力也防刷盘。
+    if experience.is_on():
+        _vid, _ = _get_or_make_vid()
+        _q = experience.check(_vid, _client_ip())
+        if not _q.get('can_use'):
+            _resp = jsonify({"code": 429, "msg": "quota_exhausted",
+                             "data": {"quota_exhausted": True, "quota": _q}})
+            _resp.set_cookie('pc_vid', _vid, max_age=15552000, httponly=True, samesite='Lax')
+            return _resp, 429
+
     # 保存文件。注意：secure_filename 会剥掉中文名的扩展名（"论文.pdf"→"pdf"），
     # 这里单独保住已被 allowed_file 校验过的扩展名，避免下游按扩展名分发时失效。
     filename = f.filename            # 原始文件名（含中文），用于结果/历史的显示
@@ -1317,9 +1419,28 @@ def upload_file():
     f.save(path)
     print(f"文件已保存：{path}")
     # 记下「safe 物理名 → 原始中文名」，供「我的文档」/「重新分析」展示真名（见 docnames.py）
-    docnames.remember(safe_filename, filename)
+    # 体验区不记此映射：/documents 已关，避免陌生访客的文件名在 doc_names.json 里堆积。
+    if not experience.is_on():
+        docnames.remember(safe_filename, filename)
 
     return _analyze_and_respond(path, filename)
+
+
+def _client_ip():
+    """访客真实 IP：优先 X-Forwarded-For 首段（反代后），回退 remote_addr。"""
+    xff = request.headers.get('X-Forwarded-For', '')
+    if xff:
+        return xff.split(',')[0].strip()
+    return request.remote_addr or ''
+
+
+def _get_or_make_vid():
+    """读 pc_vid cookie；缺失/非法则新建。返回 (vid, is_new)。
+    vid 为明文随机 hex，不需防篡改（伪造等价于清 cookie，已由 IP 软顶兜住）。"""
+    vid = request.cookies.get('pc_vid', '')
+    if len(vid) == 32 and all(c in '0123456789abcdef' for c in vid):
+        return vid, False
+    return experience.new_vid(), True
 
 
 def _analyze_and_respond(path, display_filename):
@@ -1329,6 +1450,19 @@ def _analyze_and_respond(path, display_filename):
     避免两套分析逻辑各自漂移。分析参数仍从 request.form 读（两个入口都是 form POST）；
     display_filename 是展示用文件名（结果页 / 历史），与物理 safe 文件名解耦。
     """
+    # 体验区配额闸门：在解析/OCR 之前先查，到限直接返回，不跑分析、不烧云。
+    exp_on = experience.is_on()
+    vid = ip = None
+    if exp_on:
+        vid, _ = _get_or_make_vid()
+        ip = _client_ip()
+        q = experience.check(vid, ip)
+        if not q.get('can_use'):
+            resp = jsonify({"code": 429, "msg": "quota_exhausted",
+                            "data": {"quota_exhausted": True, "quota": q}})
+            resp.set_cookie('pc_vid', vid, max_age=15552000, httponly=True, samesite='Lax')
+            return resp, 429
+
     # 解析文本
     text = extract_text(path)
 
@@ -1402,7 +1536,35 @@ def _analyze_and_respond(path, display_filename):
     prompt_template = ANALYSIS_PROMPTS.get(analysis_mode, ANALYSIS_PROMPTS['structured'])
     prompt = prompt_template.format(text=text[:6000])  # 约 1500~2000 tokens
 
-    if use_v4pro and V4ProAPI.is_available() and usage.check_quota():
+    # 输出语言本地化：界面语言非中文时，让 LLM 把「字段值」用目标语言写、JSON 字段名(key)保持不变
+    # （几乎零成本；读英文论文也能出日文/英文摘要）。zh 时不加，默认中文。
+    _LOCALE_NAME = {'en': 'English', 'ja': 'Japanese', 'ko': 'Korean', 'de': 'German'}
+    _loc = (request.form.get('locale', 'zh') or 'zh').strip().lower()
+    if _loc in _LOCALE_NAME:
+        prompt += (f"\n\n【输出语言】请将所有分析内容（各字段的「值」）用{_LOCALE_NAME[_loc]}书写；"
+                   f"JSON 的字段名（key）保持原样、不要翻译。"
+                   f"(Write all field VALUES in {_LOCALE_NAME[_loc]}; keep all JSON keys unchanged.)")
+
+    if exp_on:
+        # 体验区：强制走服务端 DeepSeek flash，忽略前端 api_key / v4pro / 本地大模型（决策 D）。
+        server_key = os.environ.get('DEEPSEEK_API_KEY', '').strip()
+        if server_key:
+            try:
+                ok, raw, usage_info = CloudAPI.call('deepseek', server_key, prompt, return_usage=True)
+                if ok:
+                    ai_result = _extract_ai_json(raw)
+                    ai_engine_used = 'deepseek'
+                    experience.record(vid, ip)   # 成功才记账，失败不扣额
+                    experience.log_cost(vid, 'flash',
+                                        (usage_info or {}).get('prompt_tokens'),
+                                        (usage_info or {}).get('completion_tokens'))
+                else:
+                    print(f"[体验区/DeepSeek] {raw}")
+            except Exception as e:
+                print(f"[体验区/DeepSeek] 调用失败：{e}")
+        else:
+            print("[体验区] 未配置 DEEPSEEK_API_KEY，无法提供云端分析")
+    elif use_v4pro and V4ProAPI.is_available() and usage.check_quota():
         try:
             print("[v4pro] 高级模式分析中（deepseek-v3 + 资深评审 prompt），耗时略长...")
             ok, raw = V4ProAPI.call(prompt)
@@ -1455,12 +1617,23 @@ def _analyze_and_respond(path, display_filename):
     }
 
     # 追加到本地分析历史（local-first）。失败绝不影响上传主流程，故 try/except 兜底。
-    try:
-        history.add_record(result_data)
-    except Exception as e:
-        print(f"[history] 写入历史失败（不影响本次结果）：{e}")
+    # 体验区不落历史：不留存陌生访客的论文，呼应「云端·尝鲜」隐私叙事（/history 也已关）。
+    if not exp_on:
+        try:
+            history.add_record(result_data)
+        except Exception as e:
+            print(f"[history] 写入历史失败（不影响本次结果）：{e}")
+    else:
+        # 体验区：分析完即删上传文件，不留存陌生访客的论文（文件已无用，呼应「云端·尝鲜」）。
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
-    return jsonify({"code": 200, "msg": "解析成功", "data": result_data})
+    resp = jsonify({"code": 200, "msg": "解析成功", "data": result_data})
+    if exp_on and vid:
+        resp.set_cookie('pc_vid', vid, max_age=15552000, httponly=True, samesite='Lax')
+    return resp
 
 
 @app.route('/api/process', methods=['POST'])
@@ -1593,6 +1766,11 @@ def get_status():
     """返回后端配置状态，供前端展示"""
     key = os.environ.get('DEEPSEEK_API_KEY', '').strip()
     has_key = key.startswith('sk-') and len(key) > 20
+    exp_on = experience.is_on()
+    exp_quota = None
+    if exp_on:
+        vid, _ = _get_or_make_vid()
+        exp_quota = experience.check(vid, _client_ip())
     return jsonify({
         "code": 200,
         "data": {
@@ -1602,8 +1780,58 @@ def get_status():
             "ollama_model": OllamaAPI.MODEL,
             "v4pro_available": V4ProAPI.is_available(),
             "v4pro_quota": usage.get_status(),
+            "experience_mode": exp_on,
+            "experience_quota": exp_quota,
         }
     })
+
+
+# 留邮箱按 IP 轻量限频（防灌水）：每 IP 1 小时最多 5 次。重启即清，MVP 够用。
+_waitlist_hits = {}
+_waitlist_lock = threading.Lock()
+
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist():
+    """体验区到限后留邮箱候补（验证付费意愿）。仅 EXPERIENCE_MODE 下可用。"""
+    if not experience.is_on():
+        return jsonify({"code": 403, "msg": "未开启"}), 403
+    ip = _client_ip()
+    now = time.time()
+    with _waitlist_lock:
+        hits = [t for t in _waitlist_hits.get(ip, []) if now - t < 3600]
+        if len(hits) >= 5:
+            return jsonify({"code": 429, "msg": "提交太频繁，请稍后再试"}), 429
+        hits.append(now)
+        _waitlist_hits[ip] = hits
+    payload = request.get_json(silent=True) or request.form
+    email = (payload.get('email') or '').strip()
+    source = (payload.get('source') or 'limit').strip()[:40]
+    vid, _ = _get_or_make_vid()
+    ok, msg = experience.add_waitlist(email, source=source, vid=vid)
+    if ok:
+        return jsonify({"code": 200, "msg": "已记录，上线会第一时间通知你"})
+    return jsonify({"code": 400, "msg": "邮箱格式不太对，再检查下" if msg == 'invalid' else "提交失败，稍后再试"}), 400
+
+
+@app.route('/admin/stats')
+def admin_stats():
+    """体验区运营看板：分析数 / 独立访客 / tokens / 估算成本¥ / 留邮箱数。
+    M1 核心产出，喂定价校准。用 env EXPERIENCE_ADMIN_TOKEN 保护，?token= 传入。
+    默认出 HTML 便于眼看；?format=json 给机读。"""
+    token = os.environ.get('EXPERIENCE_ADMIN_TOKEN', '').strip()
+    if not token or request.args.get('token', '') != token:
+        return jsonify({"code": 403, "msg": "forbidden"}), 403
+    s = experience.stats()
+    if request.args.get('format') == 'json':
+        return jsonify({"code": 200, "data": s})
+    rows = ''.join(f"<tr><td>{k}</td><td><b>{v}</b></td></tr>" for k, v in s.items())
+    return (f"<!doctype html><meta charset=utf-8><title>体验区看板</title>"
+            f"<style>body{{font:14px/1.7 system-ui,-apple-system,sans-serif;max-width:640px;"
+            f"margin:48px auto;padding:0 20px;color:#222}}h1{{font-size:18px}}"
+            f"table{{border-collapse:collapse;width:100%}}td{{border:1px solid #e5e5e5;"
+            f"padding:7px 12px}}td:first-child{{color:#777;width:58%}}</style>"
+            f"<h1>PaperCore 体验区 · 近 {s.get('window_hours','?')}h</h1><table>{rows}</table>")
 
 
 # ==================== 错误处理 ====================
@@ -1629,4 +1857,16 @@ if __name__ == '__main__':
     print("=" * 50)
     # debug 默认关闭：开启会暴露 Werkzeug 交互式调试器（可执行任意代码），
     # 一旦服务被对外暴露（如 ngrok）即为 RCE 风险。本地调试时设 FLASK_DEBUG=1。
-    app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=5003, host='127.0.0.1')
+    #
+    # 端口/主机可配（PORT / HOST env），让本地版与体验版同机并行：
+    # 体验版默认挪到 5004，避开本地版的 5003，两个进程互不抢端口；显式设 PORT 一律以 PORT 为准。
+    # HOST 默认仅本机；上公网时设 HOST=0.0.0.0（配 nginx 反代）。
+    default_port = 5004 if experience.is_on() else 5003
+    try:
+        port = int(os.environ.get('PORT', default_port))
+    except (TypeError, ValueError):
+        port = default_port
+    host = os.environ.get('HOST', '127.0.0.1').strip() or '127.0.0.1'
+    mode_label = '体验版 EXPERIENCE_MODE' if experience.is_on() else '本地版'
+    print(f"启动形态：{mode_label}  →  http://{host}:{port}")
+    app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=port, host=host)

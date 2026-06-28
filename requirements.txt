@@ -28,3 +28,7 @@ pypdfium2==5.6.0              # 把 PDF 页渲染成位图喂给 OCR（Apache/BS
 # 需单独安装 Ollama App（https://ollama.com）并执行：
 #   ollama pull deepseek-r1:7b
 # 不装则首页不显示「用本地大模型分析」开关，其余功能正常。
+
+# ===== 生产部署（体验区上公网用；本地开发可不装）=====
+# 用 gunicorn 跑 WSGI；配置见 gunicorn.conf.py，部署步骤见 部署指南.md。
+gunicorn==23.0.0

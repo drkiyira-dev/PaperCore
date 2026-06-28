@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>分析结果 · PaperCore AI 学术论文分析系统</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=28">
-    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=22" defer></script>
+    <script src="{{ url_for('static', filename='js/i18n.js') }}?v=24" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -409,7 +409,9 @@ function buildMatchCard(m, isReview) {
         <div class="match-snippet">${esc(m.snippet)}</div>
         ${m.note ? `<div class="match-note">${esc(m.note)}</div>` : ''}
         ${whyHtml}`;
-    div.addEventListener('click', () => highlightSource(m.start, m.end));
+    div.addEventListener('click', () => highlightSource(
+        m.snip_start != null ? m.snip_start : m.start,
+        m.snip_end   != null ? m.snip_end   : m.end));
     // 「为什么」展开：阻止冒泡，避免触发卡片的原文高亮
     const toggle = div.querySelector('.match-why-toggle');
     if (toggle) {

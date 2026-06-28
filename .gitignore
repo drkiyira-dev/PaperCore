@@ -13,6 +13,10 @@ data/
 eval/
 # 内部笔记
 字体接入清单.md
+运行说明.md
+部署指南.md
+# 内部资料抽屉（整理后集中存放的内部笔记/规划/给Codex旧指令，整夹不公开）
+内部文档/
 # 打包文件
 *.zip
 
@@ -28,6 +32,13 @@ progress.txt
 # 内部反思 / 进度笔记（不进公开仓库）
 PaperCore_复盘*.md
 PaperCore_进展与待办*.md
+# 内部商业/产品规划（含定价、变现，绝不进公开仓库）
+PaperCore_商业模式*.md
+PaperCore_产品规划*.md
+PaperCore_上下文*.md
+# 内部落地清单（含部署/成本/熔断细节，不进公开仓库）
+PaperCore_M1*.md
+PaperCore_落地*.md
 # Claude Code 本地配置（不公开）
 .claude/
 # GitHub 二维码宣传图（可选，默认不进仓库）
