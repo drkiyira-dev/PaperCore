@@ -444,10 +444,6 @@ function hideError() {
 // === Page Switcher ===
 const PAGE_MAP = {
     workbench: 'page-workbench',
-    docs:      'page-docs',
-    history:   'page-history',
-    report:    'page-report',
-    settings:  'page-settings',
 };
 
 function switchPage(key) {

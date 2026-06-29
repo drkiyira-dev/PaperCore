@@ -22,8 +22,7 @@ eval/
 
 # 内部清单（不进公开仓库）
 上传文件清单*.txt
-# LICENSE 暂不上传（用户决定赛后再定）
-LICENSE
+# LICENSE 现已纳入版本库（MIT）
 
 # 内部开发文档（给 Codex 的指令 / 答辩反馈 / 进度笔记，不进公开仓库）
 给Codex*.md
