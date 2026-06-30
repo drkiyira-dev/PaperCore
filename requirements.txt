@@ -19,6 +19,11 @@ PyPDF2==3.0.1            # 兜底：兼容性最好
 rapidocr_onnxruntime==1.2.3   # 本地 ONNX OCR，自带中英文模型，不出网
 pypdfium2==5.6.0              # 把 PDF 页渲染成位图喂给 OCR（Apache/BSD，替代 AGPL 的 PyMuPDF）
 
+# ===== 语义增强（C6：词库覆盖 → 语义相似度补，见 semantic.py）=====
+# 小型多语种句向量模型；首次需联网下 ~120MB 模型，之后离线可跑。
+# 没装 / 没下模型时，评分自动回退到「纯字面词库」，功能不受影响。
+sentence-transformers==5.6.0   # 一并引入 scikit-learn 等依赖
+
 # ===== 本地 T5 小模型（可选，体积大）=====
 # 仅当使用 LocalModelAI（engine='local'）时需要；不用可不装。
 # transformers==4.57.6

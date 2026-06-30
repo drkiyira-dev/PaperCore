@@ -36,6 +36,7 @@ from utils import chunk_text
 import history  # 本地分析历史（local-first 持久化，见 history.py）
 import docnames  # 上传文件「原始中文名」映射（见 docnames.py）
 import report   # 结构化报告生成（报告中心 / 批量导出，见 report.py）
+import semantic  # 轻量语义增强（C6：词库覆盖→语义相似度补；模型不可用时优雅回退，见 semantic.py）
 import usage    # v4pro 高级模式滑动配额（见 usage.py）
 import experience  # 体验区（公网试用）：按访客配额/熔断/留邮箱/成本埋点（仅 EXPERIENCE_MODE=1 启用，见 experience.py）
 
@@ -140,6 +141,50 @@ def _order_ocr_lines(result, page_width, min_score=0.5):
         return [line[1] for line in result if len(line) > 1 and line[1]]
 
 
+def _preprocess_for_ocr(img):
+    """扫描件 OCR 前的保守自适应预处理（C5 / 答辩 P16 边界①·重档 B）。
+
+    灰度 → 仅在检测到明显倾斜(0.5°~15°)时纠偏 deskew → 自适应二值化；
+    任一步异常、或二值化后前景占比异常（过低=丢字 / 过高=糊成片）一律回退，
+    确保「只帮低质扫描件，绝不拖累清晰或彩色扫描件」。返回 3 通道 ndarray 供 RapidOCR。
+    """
+    try:
+        import cv2
+        import numpy as np
+        if img is None or getattr(img, "ndim", 0) != 3:
+            return img
+        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        # —— deskew：用 Otsu 前景估计整页倾斜角，仅在 0.5°~15° 之间才纠（避免误转好图）——
+        try:
+            inv = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+            coords = np.column_stack(np.where(inv > 0))
+            if coords.shape[0] > 50:
+                angle = cv2.minAreaRect(coords)[-1]
+                if angle < -45:
+                    angle = 90.0 + angle
+                if 0.5 < abs(angle) < 15:
+                    h, w = gray.shape
+                    M = cv2.getRotationMatrix2D((w / 2.0, h / 2.0), angle, 1.0)
+                    gray = cv2.warpAffine(gray, M, (w, h),
+                                          flags=cv2.INTER_CUBIC,
+                                          borderMode=cv2.BORDER_REPLICATE)
+        except Exception:
+            pass  # deskew 失败不影响后续步骤
+
+        # —— 自适应二值化（应对不均匀光照）+ 过度二值化回退 ——
+        binimg = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY, 31, 15)
+        black_ratio = float((binimg < 128).mean())
+        if black_ratio < 0.002 or black_ratio > 0.5:
+            # 前景过少（几乎全白=丢字）/过多（几乎全黑=糊片）→ 二值化大概率帮倒忙，只用灰度
+            return cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+        return cv2.cvtColor(binimg, cv2.COLOR_GRAY2RGB)
+    except Exception as e:
+        print(f"[OCR] 预处理跳过，回退原图：{e}")
+        return img
+
+
 def ocr_pdf(file_path, dpi=300, max_pages=30, min_score=0.5):
     """
     对扫描件 / 无文字层 PDF 做本地 OCR。
@@ -171,6 +216,7 @@ def ocr_pdf(file_path, dpi=300, max_pages=30, min_score=0.5):
                 img = np.array(bitmap.to_pil().convert("RGB"))  # 复制一份，随后即可释放渲染对象
                 bitmap.close()
                 page.close()
+                img = _preprocess_for_ocr(img)   # C5·保守自适应预处理（灰度 / 限角 deskew / 自适应二值化，异常回退原图）
                 result, _elapse = engine(img)
                 if result:
                     lines = _order_ocr_lines(result, img.shape[1], min_score=min_score)
@@ -503,16 +549,18 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
 
     # ── 维度2：创新声明密度（满分 25）──────────────────────────────────
     innovation_kw = prof["innovation_kw"]
-    innov_text = (sections.get("abstract", "") + " " + text).lower()
+    innov_src = (sections.get("abstract", "") + " " + text)
+    innov_text = innov_src.lower()
     innov_hits = [kw for kw in innovation_kw if kw.lower() in innov_text]
-    innov_count = len(innov_hits)
+    sem_innov = semantic.extra_hits(innov_src, innovation_kw, innov_hits)  # C6 语义命中（模型不可用则为 0）
+    innov_count = len(innov_hits) + sem_innov
     innov_score = min(25, round(innov_count * prof["innovation_coef"]))
     innov_suggestions = []
     if innov_count == 0:
         innov_suggestions.append("摘要和正文中未检测到明确的创新声明，建议在摘要中加入\"本文提出/设计/构建了...\"类句式")
     elif innov_count < 2:
         innov_suggestions.append("创新声明表述较少，建议在摘要及引言中至少出现 2 处明确的创新贡献描述")
-    innov_detail = f"检测到 {innov_count} 处创新声明关键词"
+    innov_detail = f"检测到 {len(innov_hits)} 处创新声明关键词" + (f"（+{sem_innov} 处语义相近）" if sem_innov else "")
 
     result["dimensions"]["innovation"] = {
         "score": innov_score, "max": 25,
@@ -564,7 +612,8 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
     # 方法词在全文找：方法描述常分散在 系统模型 / 所提方法 / 实验 各段，不限"方法"章节那一段
     method_text = text
     method_hits = [kw for kw in method_kw if kw.lower() in method_text.lower()]
-    method_count = len(method_hits)
+    sem_method = semantic.extra_hits(method_text, method_kw, method_hits)  # C6 语义命中（模型不可用则为 0）
+    method_count = len(method_hits) + sem_method
     method_score = min(25, round(method_count * prof["method_coef"]))
     method_suggestions = []
     if method_count < 3:
@@ -573,7 +622,7 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
         method_suggestions.append("未检测到消融实验，建议增加消融分析以验证各模块的独立贡献")
     if "baseline" not in method_text.lower() and "对比" not in method_text:
         method_suggestions.append("未检测到基线对比，建议与同类方法进行对比实验并列出数值结果")
-    method_detail = f"检测到 {method_count} 个方法描述关键词"
+    method_detail = f"检测到 {len(method_hits)} 个方法描述关键词" + (f"（+{sem_method} 处语义相近）" if sem_method else "")
 
     result["dimensions"]["method"] = {
         "score": method_score, "max": 25,
