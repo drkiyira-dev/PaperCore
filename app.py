@@ -320,44 +320,48 @@ def extract_sections(text):
     # ── 摘要 ──────────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'摘\s*要[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:要\s*旨|概\s*要|抄\s*録|アブストラクト)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
         r'(?:^|\n)[ \t]*' + _NUM + r'Abstract[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'Abstract\s*[—–\-][ \t]*([\s\S]{30,})',  # IEEE "Abstract—..."
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:项目概述|研究背景|背景与意义)[ \t]*[\n：:]([\s\S]{30,})',
-        r'(?:^|\n)#{1,3}\s*(?:Abstract|摘要)[^\n]*\n([\s\S]{30,})',
-    ], [r'关键词', r'Keywords?', r'Index\s*Terms?', r'引言', r'Introduction', r'\d+\s*[\.、]', r'一、'])
+        r'(?:^|\n)#{1,3}\s*(?:Abstract|摘要|要旨)[^\n]*\n([\s\S]{30,})',
+    ], [r'关键词', r'Keywords?', r'Index\s*Terms?', r'引言', r'Introduction', r'キーワード', r'はじめに', r'序論', r'\d+\s*[\.、]', r'一、'])
     if v: sections['abstract'] = v[:600]
 
     # ── 关键词（单行；含 IEEE "Index Terms—"）──────────────────────────────
-    m = re.search(r'(?:关键词|关键字|Keywords?|Index\s*Terms?)\s*[：:—–\-]\s*([^\n]{5,300})', text, re.IGNORECASE)
+    m = re.search(r'(?:关键词|关键字|Keywords?|Index\s*Terms?|キーワード)\s*[：:—–\-]\s*([^\n]{5,300})', text, re.IGNORECASE)
     if m: sections['keywords'] = m.group(1).strip()
 
     # ── 研究方法 ───────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:研究方法|本文方法|所提方法|资料与方法|材料与方法|对象与方法|方\s*法)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:提案手法|提案法|提案する手法|手\s*法|システム構成|問題設定|準備)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Method(?:ology)?|Approach|Algorithm)[ \t]*\n([\s\S]{30,})',
         # IEEE/工科英文论文的方法章节常不叫 Method，而是 System Model / Problem Formulation / Proposed … 等
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:(?:System|Signal|Channel|Network)\s+(?:Model|Architecture)|Problem\s+(?:Formulation|Statement|Definition)|Proposed\s+[A-Za-z][\w\- ]{0,40}|Preliminaries|Design\s+of\s+\w+)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:技术方案|系统设计|实现方案|系统模型|问题建模|算法设计)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Method|Research Method|研究方法)[^\n]*\n([\s\S]{30,})',
-    ], [r'实验', r'仿真', r'结论', r'总结', r'Experiment', r'Result', r'Conclusion', r'\d+\s*[\.、]'])
+    ], [r'实验', r'仿真', r'结论', r'总结', r'Experiment', r'Result', r'Conclusion', r'実験', r'評価', r'結論', r'おわりに', r'\d+\s*[\.、]'])
     if v: sections['method'] = v[:500]
 
     # ── 实验/结果 ──────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:实\s*验(?:结果|与分析)?|仿\s*真(?:实验)?|结\s*果(?:与分析|与讨论)?)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:実\s*験(?:結果)?|評\s*価(?:実験)?|結\s*果(?:と考察)?)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Experiment(?:al\s*Results?)?|Simulation(?:\s*Results?)?|Results?)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:测试结果|验证实验|效果评估)[ \t]*[\n：:]([\s\S]{30,})',
-        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Experiment|Results|实验结果)[^\n]*\n([\s\S]{30,})',
-    ], [r'结论', r'总结', r'讨论', r'Conclusion', r'Discussion', r'\d+\s*[\.、]'])
+        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Experiment|Results|实验结果|実験)[^\n]*\n([\s\S]{30,})',
+    ], [r'结论', r'总结', r'讨论', r'Conclusion', r'Discussion', r'結論', r'おわりに', r'まとめ', r'\d+\s*[\.、]'])
     if v: sections['experiment'] = v[:500]
 
     # ── 结论 ───────────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:结\s*论|结\s*语|结\s*束\s*语|总\s*结|小\s*结)[ \t]*[\n：:]([\s\S]{30,})',
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:結\s*論|結\s*言|おわりに|まとめ|結びに)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Conclusion|CONCLUSION|Summary)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:总结与展望|项目总结|预期成果)[ \t]*[\n：:]([\s\S]{30,})',
-        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Conclusion|结论)[^\n]*\n([\s\S]{30,})',
-    ], [r'参考文献', r'致\s*谢', r'References?', r'Acknowledg'])
+        r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Conclusion|结论|結論)[^\n]*\n([\s\S]{30,})',
+    ], [r'参考文献', r'致\s*谢', r'References?', r'Acknowledg', r'謝\s*辞'])
     if v: sections['conclusion'] = v[:600]
 
     return sections
@@ -466,28 +470,74 @@ _METHOD_KW_EXPERT = [
     "benchmark", "convergence", "end-to-end",
 ]
 
+# ── 日本語キーワード（AI 初译，待日语母语校对；叠加进各档，完全不动上面的中英词库）──────
+# 各子库呼应所在档严苛度：teacher 最宽 / professor 只认强信号 / expert 居中。匹配为子串，日语无需分词。
+_INNOVATION_KW_JA_TEACHER = [
+    "提案", "本研究では", "本稿では", "提案する", "提案手法", "新しい", "新規",
+    "新たな", "初めて", "世界初", "独自", "独自の", "貢献", "主な貢献",
+    "本研究の貢献", "改善", "向上", "大幅に向上", "大幅に改善", "上回る",
+    "優れた", "優位", "最先端", "最高性能", "達成", "実現", "構築", "開発",
+    "設計", "革新", "革新的", "ブレークスルー", "従来手法より",
+]
+_METHOD_KW_JA_TEACHER = [
+    "手法", "提案手法", "アルゴリズム", "モデル", "ネットワーク", "フレームワーク",
+    "アーキテクチャ", "モジュール", "パラメータ", "ハイパーパラメータ", "学習",
+    "訓練", "最適化", "損失関数", "目的関数", "データセット", "実験設定", "比較",
+    "アブレーション", "ベースライン", "評価指標", "正解率", "精度", "再現率",
+    "適合率", "畳み込み", "プーリング", "注意機構", "自己注意", "エンコーダ",
+    "デコーダ", "埋め込み", "正則化", "勾配", "誤差逆伝播", "学習率",
+    "バッチサイズ", "収束", "活性化関数", "正規化", "事前学習",
+    "ファインチューニング", "交差検証", "エンドツーエンド", "特徴抽出",
+]
+_INNOVATION_KW_JA_EXPERT = [
+    "提案手法", "本研究では", "本稿では", "初めて", "世界初", "独自", "新規",
+    "新たな", "主な貢献", "本研究の貢献", "大幅に向上", "大幅に改善", "上回る",
+    "優れた", "最先端", "最高性能", "革新的", "ブレークスルー", "従来手法より",
+]
+_METHOD_KW_JA_EXPERT = [
+    "手法", "提案手法", "アルゴリズム", "モデル", "ネットワーク", "フレームワーク",
+    "アーキテクチャ", "ハイパーパラメータ", "パラメータ", "学習", "最適化",
+    "損失関数", "実験設定", "データセット", "比較", "アブレーション", "ベースライン",
+    "評価指標", "精度", "再現率", "適合率", "畳み込み", "注意機構", "エンコーダ",
+    "デコーダ", "正則化", "学習率", "バッチサイズ", "収束", "事前学習",
+    "ファインチューニング", "交差検証", "エンドツーエンド", "特徴抽出",
+]
+_INNOVATION_KW_JA_PROFESSOR = [
+    "提案手法", "初めて", "世界初", "本研究の貢献", "主な貢献", "大幅に向上",
+    "大幅に上回る", "従来手法を上回る", "最先端を上回る", "最高性能",
+    "既存手法を上回る", "革新的", "ブレークスルー",
+]
+_METHOD_KW_JA_PROFESSOR = [
+    "アルゴリズム", "擬似コード", "学習", "最適化", "損失関数", "目的関数", "勾配",
+    "学習率", "バッチサイズ", "ハイパーパラメータ", "パラメータ設定", "データセット",
+    "アブレーション", "アブレーション実験", "ベースライン", "比較実験", "評価指標",
+    "正解率", "精度", "再現率", "計算量", "時間計算量", "空間計算量", "収束",
+    "収束性", "交差検証", "実験設定",
+]
+
+
 # 三档评分尺度。cap = 总分上限（老师默认 85，前端滑块可在 70~100 调；专家 72；教授 65）。
 # data_* 为「数据支撑」三个分量的上限，实际得分按量化值个数线性升到上限（见 analyze_paper_quality）。
 SCORE_PROFILES = {
     "teacher": {
         "label": "老师", "cap": 85,
-        "innovation_kw": _INNOVATION_KW_TEACHER, "innovation_coef": 2.5,
-        "method_kw": _METHOD_KW_TEACHER, "method_coef": 1.5,
+        "innovation_kw": _INNOVATION_KW_TEACHER + _INNOVATION_KW_JA_TEACHER, "innovation_coef": 2.5,
+        "method_kw": _METHOD_KW_TEACHER + _METHOD_KW_JA_TEACHER, "method_coef": 1.5,
         "data_expr": 12, "data_conc": 8, "data_cross": 5,
         "num_strict": False,
     },
     "expert": {
         "label": "专家", "cap": 72,
-        "innovation_kw": _INNOVATION_KW_EXPERT, "innovation_coef": 2.2,
-        "method_kw": _METHOD_KW_EXPERT, "method_coef": 1.3,
+        "innovation_kw": _INNOVATION_KW_EXPERT + _INNOVATION_KW_JA_EXPERT, "innovation_coef": 2.2,
+        "method_kw": _METHOD_KW_EXPERT + _METHOD_KW_JA_EXPERT, "method_coef": 1.3,
         "data_expr": 10, "data_conc": 7, "data_cross": 5,
         "num_strict": False,
     },
     "professor": {
         "label": "教授", "cap": 65,
         # 压低系数 + 数据上限：让扎实论文从挤在 59~65 摊到 ~50~65，有短板的(创新弱/数据少)掉得下去、拉开区分度
-        "innovation_kw": _INNOVATION_KW_PROFESSOR, "innovation_coef": 1.7,
-        "method_kw": _METHOD_KW_PROFESSOR, "method_coef": 1.0,
+        "innovation_kw": _INNOVATION_KW_PROFESSOR + _INNOVATION_KW_JA_PROFESSOR, "innovation_coef": 1.7,
+        "method_kw": _METHOD_KW_PROFESSOR + _METHOD_KW_JA_PROFESSOR, "method_coef": 1.0,
         "data_expr": 7, "data_conc": 6, "data_cross": 4,
         "num_strict": True,  # 数据只认带单位/百分比/小数，裸整数不算量化指标
     },
