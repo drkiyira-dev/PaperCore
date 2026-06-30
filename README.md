@@ -70,10 +70,11 @@ Section detection and core-sentence recall run **entirely on local rules and sal
 - **∑ Formula & variable protection** — precisely extracts math formulas and variable definitions, keeping the symbol system intact.
 - **📊 Experimental-data extraction** — identifies tables, chart data, and key experimental conclusions.
 - **🎯 Salience scoring** — gives each extracted snippet a literature-grounded, traceable importance score.
-- **🖨 Scanned-document OCR** — for image-only scanned/photographed papers, falls back to local OCR.
+- **🧩 Semantic keyword matching (optional)** — beyond literal keyword lists, an optional local sentence-embedding model also credits paraphrased innovation/method statements; it downloads once, then runs offline, and falls back to literal matching if absent.
+- **🖨 Scanned-document OCR** — for image-only scanned/photographed papers, falls back to local OCR, with adaptive image preprocessing (deskew + binarization) for low-quality scans.
 - **📑 Structured reports** — generates structured reports, exportable as TXT / Markdown.
 - **🗂 History / My documents / Report center** — saves and revisits analyses locally, with a file library and batch export.
-- **🌐 Bilingual UI** — interface switchable between Chinese and English.
+- **🌐 Multilingual UI** — interface switchable between Chinese, English and Japanese.
 
 ### Four analysis modes
 
@@ -121,6 +122,7 @@ Without any key, it defaults to the local path; with Ollama installed, a local L
 | Scanned-doc OCR | RapidOCR (local ONNX, built-in CN/EN models) + pypdfium2 rendering |
 | Rule engine | [`rules.py`](rules.py) (with domain priors) |
 | Salience scoring | [`salience.py`](salience.py) |
+| Semantic matching | sentence-transformers · multilingual MiniLM (optional) → [`semantic.py`](semantic.py) |
 | Chinese processing | jieba / jieba.analyse |
 | AI engines | [`ai_engines.py`](ai_engines.py) (rules / local T5 / Ollama / cloud API) |
 | Robust parsing | json_repair (fixes malformed JSON from local LLMs) |
@@ -135,6 +137,8 @@ Without any key, it defaults to the local path; with Ollama installed, a local L
 pip install flask python-dotenv docling pdfplumber PyPDF2 jieba requests json_repair
 #   Scanned-doc OCR (local): pip install rapidocr_onnxruntime pypdfium2
 #   Local LLM (optional): install Ollama and `ollama pull deepseek-r1:7b`
+#   Semantic keyword matching (optional): pip install sentence-transformers, then download the
+#     multilingual MiniLM model (~470MB; runs offline afterward, falls back to literal keywords if absent)
 
 # 2. Run
 python app.py
@@ -163,8 +167,10 @@ python app.py
 - [x] Warm academic UI + salience visualization + product narrative
 - [x] Scanned-document OCR (local RapidOCR fallback)
 - [x] Local LLM via Ollama (deepseek-r1)
-- [x] History / My documents / Report center / bilingual UI
+- [x] History / My documents / Report center / multilingual UI (Chinese / English / Japanese)
 - [x] Small-sample evaluation (10 papers, local rules F1 0.87)
+- [x] Adaptive OCR preprocessing (deskew / binarization) for low-quality scans
+- [x] Semantic keyword matching via optional local sentence embeddings
 - [ ] Probability calibration: turn heuristic salience into a trustworthy probability
 - [ ] Broader domain-rule coverage and iteration on real user feedback
 

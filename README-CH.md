@@ -70,10 +70,11 @@ PaperCore 是一套**本地优先**的论文核心内容提取与结构化阅读
 - **∑ 公式与变量保护** —— 精确提取数学公式与变量定义，保持符号系统完整。
 - **📊 实验数据提取** —— 识别表格、图表数据与关键实验结论。
 - **🎯 显著度打分（salience）** —— 给每个抽取片段一个有文献依据、可追溯的重要性分数。
-- **🖨 扫描件 OCR** —— 无文字层的扫描 / 拍照论文，自动用本地 OCR 兜底识别。
+- **🧩 语义关键词匹配（可选）** —— 不止字面词库，可选的本地句向量模型还能识别「换了说法的创新/方法句」；模型下载一次后离线可用，未装则自动回退到字面匹配。
+- **🖨 扫描件 OCR** —— 无文字层的扫描 / 拍照论文，自动用本地 OCR 兜底识别，并对低质扫描件做自适应预处理（限角纠偏 deskew + 二值化）。
 - **📑 结构化报告** —— 生成结构化报告，支持 TXT / Markdown 导出。
 - **🗂 分析历史 / 我的文档 / 报告中心** —— 本地保存与回看分析记录、文件库与批量导出。
-- **🌐 中英双语界面** —— 界面支持中 / 英文切换。
+- **🌐 多语言界面** —— 界面支持中文 / 英文 / 日文切换。
 
 ### 四种分析模式
 
@@ -121,6 +122,7 @@ PaperCore 是一套**本地优先**的论文核心内容提取与结构化阅读
 | 扫描件 OCR | RapidOCR（本地 ONNX，自带中英文模型）+ pypdfium2 渲染 |
 | 规则引擎 | [`rules.py`](rules.py)（含领域先验） |
 | 显著度打分 | [`salience.py`](salience.py) |
+| 语义匹配 | sentence-transformers · 多语种 MiniLM（可选）→ [`semantic.py`](semantic.py) |
 | 中文处理 | jieba / jieba.analyse |
 | AI 引擎 | [`ai_engines.py`](ai_engines.py)（规则 / 本地 T5 / Ollama / 云端 API） |
 | 稳健解析 | json_repair（修复本地大模型残缺 JSON 输出） |
@@ -135,6 +137,8 @@ PaperCore 是一套**本地优先**的论文核心内容提取与结构化阅读
 pip install flask python-dotenv docling pdfplumber PyPDF2 jieba requests json_repair
 #   扫描件 OCR（本地）：pip install rapidocr_onnxruntime pypdfium2
 #   本地大模型（可选）：安装 Ollama 并 `ollama pull deepseek-r1:7b`
+#   语义关键词匹配（可选）：pip install sentence-transformers，再下多语种 MiniLM 模型
+#     （约 470MB，下完离线可用；未下则自动回退到字面词库）
 
 # 2. 启动
 python app.py
@@ -182,8 +186,10 @@ python app.py
 - [x] 暖色学术风 UI + 显著度可视化 + 产品叙事
 - [x] 扫描件 OCR（RapidOCR 本地兜底）
 - [x] 接入 Ollama 本地大模型（deepseek-r1）
-- [x] 分析历史 / 我的文档 / 报告中心 / 中英双语
+- [x] 分析历史 / 我的文档 / 报告中心 / 多语界面（中英日）
 - [x] 小样本量化评测（10 篇，本地规则 F1 0.87）
+- [x] 低质扫描件自适应 OCR 预处理（限角纠偏 / 二值化）
+- [x] 可选本地句向量的语义关键词匹配
 - [ ] 概率校准（calibration）：把启发式显著度校准为可信概率
 - [ ] 更广的领域规则覆盖与真实用户反馈迭代
 
