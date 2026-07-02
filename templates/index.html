@@ -205,6 +205,19 @@
                     </div>
                 </div>
 
+                <!-- 论文学科（决定「方法完整性」用哪套方法学环节评分；用户手选，不确定用通用） -->
+                <div class="mode-section">
+                    <label class="section-label">论文学科 · 方法尺度</label>
+                    <select id="subjectSelect" class="subject-select">
+                        <option value="general" selected>通用 / 不确定</option>
+                        <option value="cs">计算机 / 人工智能</option>
+                        <option value="medical">医学 / 生命科学</option>
+                        <option value="engineering">工程 / 物理 / 材料</option>
+                        <option value="social">社科 / 经管 / 人文</option>
+                    </select>
+                    <p class="subject-hint">按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。</p>
+                </div>
+
                 <!-- 开始分析 -->
                 <button class="btn-start" id="btnStart">开始分析</button>
                 <div class="error-message" id="errorMessage" style="display:none"></div>

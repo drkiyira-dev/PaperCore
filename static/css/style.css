@@ -720,6 +720,28 @@ a { color: inherit; text-decoration: none; }
     min-width: 26px; text-align: right;
 }
 
+/* 论文学科下拉（决定方法维度用哪套方法学环节评分） */
+.subject-select {
+    width: 100%;
+    margin-top: 4px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-card, #fff);
+    border: 1px solid var(--color-border, rgba(0,0,0,0.12));
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: border-color .15s ease;
+}
+.subject-select:hover,
+.subject-select:focus { border-color: var(--color-grass); outline: none; }
+.subject-hint {
+    margin: 7px 2px 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--color-muted, #8a8a8a);
+}
+
 /* 分析历史 · 评分档徽章（按档配色，与工作台三卡一致）*/
 .hc-score { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 99px; }
 .hc-score-teacher { background: rgba(var(--color-grass-rgb), 0.15); color: #4e8f31; }
@@ -1190,6 +1212,36 @@ a { color: inherit; text-decoration: none; }
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+/* 学科 + 置信度徽章 + 诚实提示（规则分只反映结构/方法完整度） */
+.quality-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.qmeta-chip {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(var(--color-grass-rgb), 0.10);
+    color: var(--color-text);
+    border: 1px solid rgba(var(--color-grass-rgb), 0.25);
+}
+.qmeta-chip.conf-high { background: rgba(76,175,80,0.12); color: #2e7d32; border-color: rgba(76,175,80,0.35); }
+.qmeta-chip.conf-mid  { background: rgba(255,167,38,0.14); color: #b26a00; border-color: rgba(255,167,38,0.38); }
+.qmeta-chip.conf-low  { background: rgba(239,83,80,0.14); color: #c62828; border-color: rgba(239,83,80,0.38); }
+.quality-caveat {
+    margin: 2px 0 6px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--color-muted, #8a8a8a);
+    padding: 7px 10px;
+    background: rgba(0,0,0,0.03);
+    border-radius: var(--radius-md);
+    border-left: 3px solid rgba(var(--color-grass-rgb), 0.35);
 }
 
 .quality-dim {

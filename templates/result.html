@@ -774,6 +774,22 @@ function renderQuality(qs) {
     const ringClass = total >= 80 ? 'high' : total >= 60 ? 'mid' : 'low';
     ring.classList.add(ringClass);
 
+    // 学科 + 置信度徽章（规则分只反映结构/方法完整度，低置信时明确提示别太信）
+    const conf = qs.confidence || null;
+    const subj = qs.subject || null;
+    let metaHtml = '';
+    if (subj || conf) {
+        const lvlCls = conf ? ({ '高': 'high', '中': 'mid', '低': 'low' }[conf.level] || 'mid') : 'mid';
+        metaHtml += '<div class="quality-meta">';
+        if (subj) metaHtml += `<span class="qmeta-chip">学科：${esc(subj.label)}</span>`;
+        if (conf) metaHtml += `<span class="qmeta-chip conf-${lvlCls}">置信度：${esc(conf.level)}（${conf.score}）</span>`;
+        metaHtml += '</div>';
+        if (conf && conf.caveat) {
+            const why = (conf.reasons && conf.reasons.length) ? '　—　' + esc(conf.reasons.join('；')) : '';
+            metaHtml += `<div class="quality-caveat">${esc(conf.caveat)}${why}</div>`;
+        }
+    }
+
     const dimOrder = ['structure', 'innovation', 'data_support', 'method'];
     let dimsHtml = '';
     dimOrder.forEach(key => {
@@ -789,7 +805,7 @@ function renderQuality(qs) {
             </div>
             <div class="qdim-detail">${esc(d.detail)}</div>`;
     });
-    dimsEl.innerHTML = dimsHtml;
+    dimsEl.innerHTML = metaHtml + dimsHtml;
 
     const sugs = qs.suggestions || [];
     if (sugs.length > 0) {

@@ -84,6 +84,16 @@
     '答辩汇报': { en: 'Defense Mode', ja: '口頭発表モード' },
     '生成答辩大纲': { en: 'Generate defense outline', ja: '発表アウトラインを生成' },
     '开始分析': { en: 'Start Analysis', ja: '分析を開始' },
+    // 论文学科选择器（决定方法维度用哪套方法学环节评分）
+    '论文学科 · 方法尺度': { en: 'Subject · Method Rubric', ja: '分野 · 手法の尺度' },
+    '通用 / 不确定': { en: 'General / Unsure', ja: '汎用 / 不明' },
+    '计算机 / 人工智能': { en: 'Computer Science / AI', ja: '計算機 / 人工知能' },
+    '医学 / 生命科学': { en: 'Medicine / Life Sciences', ja: '医学 / 生命科学' },
+    '工程 / 物理 / 材料': { en: 'Engineering / Physics / Materials', ja: '工学 / 物理 / 材料' },
+    '社科 / 经管 / 人文': { en: 'Social Sciences / Business / Humanities', ja: '社会科学 / 経営 / 人文' },
+    '按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。': {
+        en: 'Scores "method completeness" by subject — pick the right one for accuracy; with a large keyword base this prevents keyword-stuffing from inflating scores.',
+        ja: '分野に応じて「手法の完全性」を評価。正しく選ぶほど正確です。語彙が大規模化した今、これで「語句の詰め込みによる過大評価」を防ぎます。' },
     // 实时预览面板
     '实时分析预览': { en: 'Live Analysis Preview', ja: 'リアルタイム分析プレビュー' },
     '等待上传论文': { en: 'Waiting for upload', ja: '論文のアップロード待ち' },

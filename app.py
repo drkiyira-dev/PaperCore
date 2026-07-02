@@ -321,47 +321,55 @@ def extract_sections(text):
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'摘\s*要[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:要\s*旨|概\s*要|抄\s*録|アブストラクト)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:초\s*록|요\s*약|개\s*요)[ \t]*[\n：:]([\s\S]{30,})',  # 한국어
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Zusammenfassung|Kurzfassung|Abstrakt)[ \t]*[\n：:]([\s\S]{30,})',  # Deutsch
         r'(?:^|\n)[ \t]*' + _NUM + r'Abstract[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'Abstract\s*[—–\-][ \t]*([\s\S]{30,})',  # IEEE "Abstract—..."
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:项目概述|研究背景|背景与意义)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)#{1,3}\s*(?:Abstract|摘要|要旨)[^\n]*\n([\s\S]{30,})',
-    ], [r'关键词', r'Keywords?', r'Index\s*Terms?', r'引言', r'Introduction', r'キーワード', r'はじめに', r'序論', r'\d+\s*[\.、]', r'一、'])
+    ], [r'关键词', r'Keywords?', r'Index\s*Terms?', r'引言', r'Introduction', r'キーワード', r'はじめに', r'序論', r'키워드', r'서\s*론', r'Schl(?:ü|ue)sselw(?:ö|oe)rter', r'Stichw(?:ö|oe)rter', r'Einleitung', r'\d+\s*[\.、]', r'一、'])
     if v: sections['abstract'] = v[:600]
 
     # ── 关键词（单行；含 IEEE "Index Terms—"）──────────────────────────────
-    m = re.search(r'(?:关键词|关键字|Keywords?|Index\s*Terms?|キーワード)\s*[：:—–\-]\s*([^\n]{5,300})', text, re.IGNORECASE)
+    m = re.search(r'(?:关键词|关键字|Keywords?|Index\s*Terms?|キーワード|키워드|주제어|색인어|Schl(?:ü|ue)sselw(?:ö|oe)rter|Stichw(?:ö|oe)rter|Schlagw(?:ö|oe)rter)\s*[：:—–\-]\s*([^\n]{5,300})', text, re.IGNORECASE)
     if m: sections['keywords'] = m.group(1).strip()
 
     # ── 研究方法 ───────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:研究方法|本文方法|所提方法|资料与方法|材料与方法|对象与方法|方\s*法)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:提案手法|提案法|提案する手法|手\s*法|システム構成|問題設定|準備)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:제안\s*(?:방법|기법)|연구\s*방법|방\s*법|접근법|시스템\s*구성|문제\s*정의)[ \t]*[\n：:]([\s\S]{30,})',  # 한국어
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Methodik|Methoden|Methode|Vorgeschlagene\s+\w+|Ansatz|Systemmodell|Problemstellung|Vorgehensweise)[ \t]*[\n：:]([\s\S]{30,})',  # Deutsch
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Method(?:ology)?|Approach|Algorithm)[ \t]*\n([\s\S]{30,})',
         # IEEE/工科英文论文的方法章节常不叫 Method，而是 System Model / Problem Formulation / Proposed … 等
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:(?:System|Signal|Channel|Network)\s+(?:Model|Architecture)|Problem\s+(?:Formulation|Statement|Definition)|Proposed\s+[A-Za-z][\w\- ]{0,40}|Preliminaries|Design\s+of\s+\w+)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:技术方案|系统设计|实现方案|系统模型|问题建模|算法设计)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Method|Research Method|研究方法)[^\n]*\n([\s\S]{30,})',
-    ], [r'实验', r'仿真', r'结论', r'总结', r'Experiment', r'Result', r'Conclusion', r'実験', r'評価', r'結論', r'おわりに', r'\d+\s*[\.、]'])
+    ], [r'实验', r'仿真', r'结论', r'总结', r'Experiment', r'Result', r'Conclusion', r'実験', r'評価', r'結論', r'おわりに', r'실\s*험', r'평\s*가', r'결\s*과', r'결\s*론', r'Ergebnisse', r'Evaluierung', r'Auswertung', r'Fazit', r'Schlussfolgerung', r'\d+\s*[\.、]'])
     if v: sections['method'] = v[:500]
 
     # ── 实验/结果 ──────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:实\s*验(?:结果|与分析)?|仿\s*真(?:实验)?|结\s*果(?:与分析|与讨论)?)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:実\s*験(?:結果)?|評\s*価(?:実験)?|結\s*果(?:と考察)?)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:실\s*험(?:\s*결과)?|평\s*가|결\s*과(?:\s*및\s*분석)?)[ \t]*[\n：:]([\s\S]{30,})',  # 한국어
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Experimente|Experiment|Evaluierung|Auswertung|Ergebnisse)[ \t]*[\n：:]([\s\S]{30,})',  # Deutsch
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Experiment(?:al\s*Results?)?|Simulation(?:\s*Results?)?|Results?)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:测试结果|验证实验|效果评估)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Experiment|Results|实验结果|実験)[^\n]*\n([\s\S]{30,})',
-    ], [r'结论', r'总结', r'讨论', r'Conclusion', r'Discussion', r'結論', r'おわりに', r'まとめ', r'\d+\s*[\.、]'])
+    ], [r'结论', r'总结', r'讨论', r'Conclusion', r'Discussion', r'結論', r'おわりに', r'まとめ', r'결\s*론', r'맺음말', r'Fazit', r'Schlussfolgerung', r'\d+\s*[\.、]'])
     if v: sections['experiment'] = v[:500]
 
     # ── 结论 ───────────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:结\s*论|结\s*语|结\s*束\s*语|总\s*结|小\s*结)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:結\s*論|結\s*言|おわりに|まとめ|結びに)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:결\s*론|맺음말|요약\s*및\s*결론)[ \t]*[\n：:]([\s\S]{30,})',  # 한국어
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Fazit|Schlussfolgerung(?:en)?|Schluss|Zusammenfassung\s+und\s+Ausblick)[ \t]*[\n：:]([\s\S]{30,})',  # Deutsch
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Conclusion|CONCLUSION|Summary)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:总结与展望|项目总结|预期成果)[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)#{1,3}\s*(?:\d+\.?\s*)?(?:Conclusion|结论|結論)[^\n]*\n([\s\S]{30,})',
-    ], [r'参考文献', r'致\s*谢', r'References?', r'Acknowledg', r'謝\s*辞'])
+    ], [r'参考文献', r'致\s*谢', r'References?', r'Acknowledg', r'謝\s*辞', r'참고\s*문헌', r'감사의\s*글', r'Literatur(?:verzeichnis)?', r'Danksagung'])
     if v: sections['conclusion'] = v[:600]
 
     return sections
@@ -383,6 +391,8 @@ _INNOVATION_KW_TEACHER = [
     "超越", "最优", "突破", "主要贡献", "核心贡献", "关键贡献", "核心创新",
     "关键创新", "创新点", "贡献如下", "主要工作", "独特", "有效改善",
     "显著提升", "大幅提升", "填补空白",
+    "原创", "原创性", "开创性", "开创了", "前所未有", "首创", "率先",
+    "引领", "新颖", "弥补了不足", "优势明显",
     # 英文：propose / contribution / SOTA 类
     "we propose", "we present", "we introduce", "we develop", "we design",
     "propose a novel", "novel", "contribution", "key contribution",
@@ -391,6 +401,9 @@ _INNOVATION_KW_TEACHER = [
     "state-of-the-art", "sota", "achieve state-of-the-art",
     "to the best of our knowledge", "first to", "improvement over",
     "breakthrough", "our method",
+    "pioneering", "unprecedented", "cutting-edge", "first of its kind",
+    "we are the first to", "advance the state", "novel approach",
+    "novel framework", "novel method",
 ]
 
 _METHOD_KW_TEACHER = [
@@ -404,6 +417,10 @@ _METHOD_KW_TEACHER = [
     "批大小", "迭代", "收敛", "激活函数", "归一化", "残差", "预训练", "微调",
     "评价指标", "准确率", "召回率", "精确率", "交叉验证", "端到端",
     "特征提取", "特征融合", "采样", "权重", "阈值", "相似度",
+    "迁移学习", "强化学习", "自监督", "半监督", "无监督", "对比学习",
+    "知识蒸馏", "蒸馏", "剪枝", "量化", "泛化", "鲁棒性", "生成对抗",
+    "图神经网络", "扩散模型", "零样本", "少样本", "数据增强", "特征工程",
+    "集成学习", "聚类", "分类器", "回归", "F1值", "AUC", "混淆矩阵",
     # 英文等价词
     "architecture", "framework", "model", "network", "layer", "module",
     "parameter", "hyperparameter", "training", "optimizer", "loss",
@@ -415,6 +432,13 @@ _METHOD_KW_TEACHER = [
     "fine-tune", "metric", "precision", "recall", "benchmark",
     "convergence", "activation", "softmax", "dropout", "feature",
     "representation", "end-to-end",
+    "transfer learning", "reinforcement learning", "self-supervised",
+    "semi-supervised", "unsupervised", "contrastive learning",
+    "knowledge distillation", "distillation", "pruning", "quantization",
+    "generalization", "robustness", "generative adversarial", "gan",
+    "graph neural network", "gnn", "diffusion model", "zero-shot",
+    "few-shot", "data augmentation", "ensemble", "clustering",
+    "classifier", "regression", "f1 score", "auc", "confusion matrix",
 ]
 
 # 教授档·创新：只认「明确、可验证的强创新声明」，剔除 propose/present/novel 这类谁都写得出的泛词
@@ -427,6 +451,8 @@ _INNOVATION_KW_PROFESSOR = [
     "outperform", "significantly outperform", "surpass", "superior to",
     "state-of-the-art", "to the best of our knowledge", "first to",
     "for the first time",
+    "首创", "前所未有", "开创性",
+    "pioneering", "unprecedented", "we are the first to",
 ]
 
 # 教授档·方法：只认「方法完整性的实质标志」——算法/超参/数据集/消融/基线/复杂度/收敛等，
@@ -442,6 +468,9 @@ _METHOD_KW_PROFESSOR = [
     "hyperparameter", "dataset", "ablation", "baseline", "evaluation metric",
     "accuracy", "precision", "recall", "complexity", "convergence",
     "cross-validation", "experimental setup",
+    "泛化性", "鲁棒性", "消融研究", "统计显著", "显著性检验", "标准差", "置信区间",
+    "generalization", "robustness", "ablation study", "statistical significance",
+    "standard deviation", "confidence interval", "p-value", "f1 score", "auc",
 ]
 
 # 专家档·创新（中档）：比老师收掉最泛的词（创造性/全新/独特…），比教授宽——保留 propose/novel 等中强信号
@@ -449,10 +478,13 @@ _INNOVATION_KW_EXPERT = [
     "本文提出", "本文设计", "本文构建", "提出了一种", "设计了一种", "首次", "本文首次",
     "创新点", "主要贡献", "核心贡献", "关键贡献", "核心创新", "关键创新",
     "新方法", "新框架", "新模型", "显著提升", "大幅提升", "优于", "超越", "突破", "填补空白",
+    "原创性", "开创性", "前所未有", "首创", "率先", "新颖",
     "we propose", "we present", "we introduce", "we design", "propose a novel", "novel",
     "contribution", "key contribution", "main contribution", "our contributions",
     "key innovation", "outperform", "significantly outperform", "surpass", "superior to",
     "state-of-the-art", "sota", "first to", "improvement over", "our method",
+    "pioneering", "unprecedented", "cutting-edge", "first of its kind",
+    "we are the first to", "novel approach",
 ]
 
 # 专家档·方法（中档）：去掉 步骤/结构/函数/公式/层/权重/激活 这类最通用的，保留实义方法术语
@@ -462,12 +494,17 @@ _METHOD_KW_EXPERT = [
     "卷积", "注意力", "自注意力", "编码器", "解码器", "正则化", "梯度下降", "学习率",
     "批大小", "收敛", "预训练", "微调", "评价指标", "准确率", "召回率", "精确率",
     "交叉验证", "端到端", "特征提取", "特征融合",
+    "迁移学习", "强化学习", "自监督", "对比学习", "知识蒸馏", "泛化", "鲁棒性",
+    "数据增强", "F1值", "AUC",
     "architecture", "framework", "model", "network", "module", "parameter",
     "hyperparameter", "training", "optimizer", "loss", "dataset", "ablation",
     "comparison", "accuracy", "algorithm", "attention", "convolution", "transformer",
     "encoder", "decoder", "regularization", "gradient", "learning rate", "batch",
     "normalization", "pretrain", "fine-tune", "metric", "precision", "recall",
     "benchmark", "convergence", "end-to-end",
+    "transfer learning", "reinforcement learning", "self-supervised",
+    "contrastive learning", "knowledge distillation", "generalization",
+    "robustness", "data augmentation", "f1 score", "auc",
 ]
 
 # ── 日本語キーワード（AI 初译，待日语母语校对；叠加进各档，完全不动上面的中英词库）──────
@@ -478,6 +515,9 @@ _INNOVATION_KW_JA_TEACHER = [
     "本研究の貢献", "改善", "向上", "大幅に向上", "大幅に改善", "上回る",
     "優れた", "優位", "最先端", "最高性能", "達成", "実現", "構築", "開発",
     "設計", "革新", "革新的", "ブレークスルー", "従来手法より",
+    "独創的", "先駆的", "前例のない", "世界に先駆けて", "これまでにない",
+    "有効性", "性能向上", "精度向上", "上回った", "凌駕", "優位性",
+    "最高水準", "従来研究より",
 ]
 _METHOD_KW_JA_TEACHER = [
     "手法", "提案手法", "アルゴリズム", "モデル", "ネットワーク", "フレームワーク",
@@ -488,11 +528,17 @@ _METHOD_KW_JA_TEACHER = [
     "デコーダ", "埋め込み", "正則化", "勾配", "誤差逆伝播", "学習率",
     "バッチサイズ", "収束", "活性化関数", "正規化", "事前学習",
     "ファインチューニング", "交差検証", "エンドツーエンド", "特徴抽出",
+    "転移学習", "強化学習", "自己教師あり学習", "半教師あり学習", "教師なし学習",
+    "対照学習", "知識蒸留", "蒸留", "枝刈り", "量子化", "汎化", "頑健性",
+    "敵対的生成", "グラフニューラルネットワーク", "拡散モデル", "ゼロショット",
+    "データ拡張", "アンサンブル学習", "クラスタリング", "分類器", "F1スコア",
 ]
 _INNOVATION_KW_JA_EXPERT = [
     "提案手法", "本研究では", "本稿では", "初めて", "世界初", "独自", "新規",
     "新たな", "主な貢献", "本研究の貢献", "大幅に向上", "大幅に改善", "上回る",
     "優れた", "最先端", "最高性能", "革新的", "ブレークスルー", "従来手法より",
+    "独創的", "先駆的", "前例のない", "これまでにない", "性能向上", "精度向上",
+    "上回った", "凌駕", "優位性", "最高水準",
 ]
 _METHOD_KW_JA_EXPERT = [
     "手法", "提案手法", "アルゴリズム", "モデル", "ネットワーク", "フレームワーク",
@@ -501,11 +547,14 @@ _METHOD_KW_JA_EXPERT = [
     "評価指標", "精度", "再現率", "適合率", "畳み込み", "注意機構", "エンコーダ",
     "デコーダ", "正則化", "学習率", "バッチサイズ", "収束", "事前学習",
     "ファインチューニング", "交差検証", "エンドツーエンド", "特徴抽出",
+    "転移学習", "強化学習", "自己教師あり学習", "対照学習", "知識蒸留",
+    "汎化", "頑健性", "データ拡張", "F1スコア", "アンサンブル学習",
 ]
 _INNOVATION_KW_JA_PROFESSOR = [
     "提案手法", "初めて", "世界初", "本研究の貢献", "主な貢献", "大幅に向上",
     "大幅に上回る", "従来手法を上回る", "最先端を上回る", "最高性能",
     "既存手法を上回る", "革新的", "ブレークスルー",
+    "前例のない", "世界に先駆けて", "凌駕", "従来手法を凌駕", "最高水準",
 ]
 _METHOD_KW_JA_PROFESSOR = [
     "アルゴリズム", "擬似コード", "学習", "最適化", "損失関数", "目的関数", "勾配",
@@ -513,7 +562,323 @@ _METHOD_KW_JA_PROFESSOR = [
     "アブレーション", "アブレーション実験", "ベースライン", "比較実験", "評価指標",
     "正解率", "精度", "再現率", "計算量", "時間計算量", "空間計算量", "収束",
     "収束性", "交差検証", "実験設定",
+    "汎化性", "頑健性", "統計的有意性", "標準偏差", "信頼区間", "F1スコア",
 ]
+
+# ── 한국어 키워드（AI 初译，待韩语母语校对；叠加进各档，完全不动上面的中英日词库）──────
+# 与日语同思路：teacher 最宽 / professor 只认强信号 / expert 居中。子串匹配，韩语无需分词。
+_INNOVATION_KW_KO_TEACHER = [
+    "제안", "본 연구에서는", "본 논문에서는", "제안한다", "제안하는", "제안 방법",
+    "제안하는 방법", "새로운", "신규", "참신한", "새롭게", "처음으로", "최초로",
+    "세계 최초", "독창적", "독자적", "기여", "주요 기여", "본 연구의 기여",
+    "개선", "향상", "크게 향상", "대폭 개선", "능가", "우수한", "우위",
+    "최첨단", "최고 성능", "달성", "실현", "구축", "개발", "설계", "혁신",
+    "혁신적", "획기적", "기존 방법보다", "기존 연구보다",
+]
+_METHOD_KW_KO_TEACHER = [
+    "방법", "제안 방법", "알고리즘", "모델", "네트워크", "프레임워크", "아키텍처",
+    "구조", "모듈", "파라미터", "하이퍼파라미터", "학습", "훈련", "최적화",
+    "손실 함수", "목적 함수", "데이터셋", "실험 설정", "비교", "어블레이션",
+    "절제 연구", "베이스라인", "기준선", "평가 지표", "정확도", "정밀도",
+    "재현율", "합성곱", "컨볼루션", "풀링", "어텐션", "셀프 어텐션", "인코더",
+    "디코더", "임베딩", "정규화", "그래디언트", "역전파", "학습률", "배치 크기",
+    "수렴", "활성화 함수", "사전 학습", "파인 튜닝", "미세 조정", "교차 검증",
+    "종단간", "특징 추출", "특징", "가중치",
+]
+_INNOVATION_KW_KO_EXPERT = [
+    "제안 방법", "제안하는 방법", "본 연구에서는", "본 논문에서는", "처음으로",
+    "최초로", "세계 최초", "독창적", "신규", "참신한", "주요 기여", "본 연구의 기여",
+    "크게 향상", "대폭 개선", "능가", "우수한", "최첨단", "최고 성능", "혁신적",
+    "획기적", "기존 방법보다",
+]
+_METHOD_KW_KO_EXPERT = [
+    "알고리즘", "제안 방법", "프레임워크", "아키텍처", "하이퍼파라미터", "학습",
+    "최적화", "손실 함수", "실험 설정", "데이터셋", "비교", "어블레이션",
+    "베이스라인", "평가 지표", "정확도", "재현율", "정밀도", "합성곱", "어텐션",
+    "인코더", "디코더", "정규화", "학습률", "배치 크기", "수렴", "사전 학습",
+    "파인 튜닝", "교차 검증", "종단간", "특징 추출",
+]
+_INNOVATION_KW_KO_PROFESSOR = [
+    "제안 방법", "최초로", "세계 최초", "본 연구의 기여", "주요 기여", "크게 향상",
+    "크게 능가", "기존 방법을 능가", "기존 연구를 능가", "최첨단을 능가",
+    "최고 성능", "혁신적", "획기적",
+]
+_METHOD_KW_KO_PROFESSOR = [
+    "알고리즘", "의사 코드", "학습", "최적화", "손실 함수", "목적 함수", "그래디언트",
+    "학습률", "배치 크기", "하이퍼파라미터", "파라미터 설정", "데이터셋", "어블레이션",
+    "절제 연구", "베이스라인", "비교 실험", "평가 지표", "정확도", "재현율", "정밀도",
+    "계산 복잡도", "시간 복잡도", "공간 복잡도", "수렴", "수렴성", "교차 검증", "실험 설정",
+]
+
+# ── Deutsche Schlüsselwörter（AI 初译，待德语母语校对；叠加进各档，完全不动上面的词库）──
+# 匹配为大小写不敏感子串（analyze 里两侧都 .lower()），故名词首字母大写不影响命中。
+_INNOVATION_KW_DE_TEACHER = [
+    "wir schlagen vor", "vorgeschlagene", "vorgeschlagenen", "vorschlagen",
+    "wir stellen vor", "wir präsentieren", "wir führen ein", "in dieser arbeit",
+    "in dieser studie", "in diesem beitrag", "neuartig", "neuartige",
+    "neuartigen", "erstmals", "zum ersten mal", "erstmalig", "originell",
+    "einzigartig", "beitrag", "hauptbeitrag", "unser beitrag", "verbesserung",
+    "verbessert", "deutlich verbessert", "erheblich verbessert", "übertrifft",
+    "übertreffen", "überlegen", "überlegene", "stand der technik",
+    "beste leistung", "höchste leistung", "erreicht", "realisiert",
+    "entwickelt", "entworfen", "innovativ", "innovative", "durchbruch",
+    "bahnbrechend", "besser als bestehende", "im vergleich zu bestehenden",
+]
+_METHOD_KW_DE_TEACHER = [
+    "methode", "vorgeschlagene methode", "ansatz", "algorithmus", "modell",
+    "netzwerk", "framework", "architektur", "struktur", "modul", "parameter",
+    "hyperparameter", "training", "optimierung", "verlustfunktion",
+    "zielfunktion", "datensatz", "versuchsaufbau", "vergleich", "ablation",
+    "ablationsstudie", "baseline", "basislinie", "bewertungsmetrik",
+    "evaluationsmetrik", "genauigkeit", "präzision", "trefferquote",
+    "faltung", "pooling", "aufmerksamkeit", "attention", "self-attention",
+    "encoder", "decoder", "kodierer", "dekodierer", "einbettung", "embedding",
+    "regularisierung", "gradient", "backpropagation", "lernrate",
+    "batch-größe", "konvergenz", "aktivierungsfunktion", "normalisierung",
+    "vortraining", "feinabstimmung", "kreuzvalidierung", "ende-zu-ende",
+    "merkmalsextraktion", "merkmal", "gewicht",
+]
+_INNOVATION_KW_DE_EXPERT = [
+    "wir schlagen vor", "vorgeschlagene", "vorgeschlagenen", "in dieser arbeit",
+    "in dieser studie", "neuartig", "neuartige", "erstmals", "zum ersten mal",
+    "originell", "hauptbeitrag", "unser beitrag", "deutlich verbessert",
+    "erheblich verbessert", "übertrifft", "übertreffen", "überlegen",
+    "stand der technik", "beste leistung", "innovativ", "bahnbrechend",
+    "besser als bestehende",
+]
+_METHOD_KW_DE_EXPERT = [
+    "algorithmus", "vorgeschlagene methode", "framework", "architektur",
+    "hyperparameter", "training", "optimierung", "verlustfunktion",
+    "versuchsaufbau", "datensatz", "vergleich", "ablation", "ablationsstudie",
+    "baseline", "bewertungsmetrik", "genauigkeit", "trefferquote", "präzision",
+    "faltung", "attention", "encoder", "decoder", "regularisierung", "lernrate",
+    "batch-größe", "konvergenz", "vortraining", "feinabstimmung",
+    "kreuzvalidierung", "ende-zu-ende", "merkmalsextraktion",
+]
+_INNOVATION_KW_DE_PROFESSOR = [
+    "vorgeschlagene", "vorgeschlagenen", "erstmals", "zum ersten mal",
+    "hauptbeitrag", "unser beitrag", "deutlich übertrifft",
+    "übertrifft bestehende", "übertrifft den stand der technik",
+    "beste leistung", "höchste leistung", "bahnbrechend",
+    "erheblicher fortschritt",
+]
+_METHOD_KW_DE_PROFESSOR = [
+    "algorithmus", "pseudocode", "training", "optimierung", "verlustfunktion",
+    "zielfunktion", "gradient", "lernrate", "batch-größe", "hyperparameter",
+    "parametereinstellung", "datensatz", "ablation", "ablationsstudie",
+    "baseline", "vergleichsexperiment", "bewertungsmetrik", "genauigkeit",
+    "trefferquote", "präzision", "komplexität", "zeitkomplexität",
+    "raumkomplexität", "konvergenz", "kreuzvalidierung", "versuchsaufbau",
+]
+
+# ════════════════════════════════════════════════════════════════════════════
+# 跨学科方法词库（通用科研方法 / 医学 / 工程·物理·材料 / 社科·经管·人文）
+# 原词库偏 CS/ML，非计算机论文方法维度命中少 → 补齐跨学科术语。5 语言全覆盖。
+#   FULL = 老师 + 专家档用（这些词本身就具方法学实义，够格 peer 视角）
+#   PRO  = 教授档用（只留「定量严谨 / 强设计」硬词：统计推断、RCT/队列/生存、有限元、
+#          面板/工具变量/双重差分/结构方程等；剔除访谈、问卷、建模这类较软的）
+#   非中英均 AI 初译，待母语校对（同 brand / 日韩德词库）。命中统计已去重，重叠无害。
+# ════════════════════════════════════════════════════════════════════════════
+_XDOM_METHOD_ZHEN_FULL = [
+    # 通用科研方法（中）
+    "假设检验", "显著性检验", "方差分析", "回归分析", "相关分析", "卡方检验",
+    "t检验", "秩和检验", "效应量", "样本量", "抽样", "随机抽样", "分层抽样",
+    "问卷", "问卷调查", "量表", "信度", "效度", "对照组", "实验组", "随机对照",
+    "双盲", "元分析", "系统综述", "描述性统计", "中位数", "正态分布", "显著性水平",
+    # 医学 / 生命科学（中）
+    "临床试验", "随机对照试验", "队列研究", "病例对照", "横断面研究", "前瞻性",
+    "回顾性研究", "敏感度", "特异度", "生存分析", "风险比", "比值比", "相对危险度",
+    "生物标志物", "基因表达", "免疫组化", "细胞培养", "动物模型", "疗效",
+    "不良反应", "纳入标准", "排除标准", "随访",
+    # 工程 / 物理 / 材料（中）
+    "有限元", "有限元分析", "数值模拟", "数值仿真", "表征", "扫描电镜", "透射电镜",
+    "光谱分析", "衍射", "X射线衍射", "应力", "应变", "弹性模量", "热处理",
+    "反馈控制", "传递函数", "信噪比", "频域", "时域", "边界条件", "网格划分",
+    "材料性能",
+    # 社科 / 经管 / 人文（中）
+    "质性研究", "定性研究", "定量研究", "混合方法", "深度访谈", "半结构化访谈",
+    "焦点小组", "案例研究", "扎根理论", "内容分析", "话语分析", "民族志",
+    "参与观察", "计量经济", "面板数据", "时间序列", "工具变量", "固定效应",
+    "随机效应", "双重差分", "断点回归", "中介效应", "调节效应", "结构方程",
+    "主题分析",
+    # 英文（跨学科）
+    "hypothesis testing", "significance test", "analysis of variance", "anova",
+    "regression analysis", "correlation analysis", "chi-square", "t-test",
+    "effect size", "sample size", "random sampling", "stratified sampling",
+    "questionnaire", "survey", "reliability", "validity", "control group",
+    "randomized controlled", "double-blind", "meta-analysis",
+    "systematic review", "descriptive statistics", "clinical trial",
+    "cohort study", "case-control", "cross-sectional", "prospective",
+    "retrospective", "sensitivity", "specificity", "survival analysis",
+    "hazard ratio", "odds ratio", "relative risk", "biomarker",
+    "gene expression", "immunohistochemistry", "cell culture", "animal model",
+    "efficacy", "adverse effect", "inclusion criteria", "exclusion criteria",
+    "follow-up", "finite element", "numerical simulation", "characterization",
+    "scanning electron microscopy", "transmission electron microscopy",
+    "spectroscopy", "x-ray diffraction", "stress", "strain", "elastic modulus",
+    "heat treatment", "feedback control", "transfer function",
+    "signal-to-noise", "frequency domain", "time domain", "boundary condition",
+    "qualitative research", "quantitative research", "mixed methods",
+    "in-depth interview", "focus group", "case study", "grounded theory",
+    "content analysis", "discourse analysis", "ethnography", "econometric",
+    "panel data", "time series", "instrumental variable", "fixed effects",
+    "difference-in-differences", "regression discontinuity", "mediation",
+    "moderation", "structural equation", "thematic analysis",
+]
+_XDOM_METHOD_ZHEN_PRO = [
+    "假设检验", "方差分析", "回归分析", "卡方检验", "效应量", "样本量",
+    "随机对照", "双盲", "元分析", "随机对照试验", "队列研究", "病例对照",
+    "生存分析", "风险比", "比值比", "有限元分析", "数值模拟", "面板数据",
+    "工具变量", "固定效应", "双重差分", "断点回归", "结构方程", "中介效应",
+    "调节效应",
+    "hypothesis testing", "analysis of variance", "anova", "regression analysis",
+    "effect size", "sample size", "randomized controlled", "double-blind",
+    "meta-analysis", "randomized controlled trial", "cohort study",
+    "case-control", "survival analysis", "hazard ratio", "odds ratio",
+    "finite element analysis", "numerical simulation", "panel data",
+    "instrumental variable", "fixed effects", "difference-in-differences",
+    "regression discontinuity", "structural equation", "mediation", "moderation",
+]
+_XDOM_INNOV_ZHEN = [
+    "理论贡献", "实践意义", "实践价值", "研究空白", "填补研究空白", "首次系统",
+    "具有重要意义", "拓展了", "丰富了", "新视角", "新范式",
+    "theoretical contribution", "practical implication", "practical significance",
+    "research gap", "fills a gap", "first systematic", "new perspective",
+    "new paradigm", "sheds light on", "novel insight",
+]
+
+_XDOM_METHOD_JA_FULL = [
+    # 通用
+    "仮説検定", "有意差検定", "分散分析", "回帰分析", "相関分析", "カイ二乗検定",
+    "t検定", "効果量", "サンプルサイズ", "標本サイズ", "無作為抽出", "層化抽出",
+    "アンケート", "質問紙", "尺度", "信頼性", "妥当性", "対照群", "無作為化比較",
+    "二重盲検", "メタ分析", "システマティックレビュー", "記述統計", "有意水準",
+    # 医学
+    "臨床試験", "ランダム化比較試験", "コホート研究", "症例対照研究", "横断研究",
+    "前向き", "後ろ向き", "感度", "特異度", "生存分析", "ハザード比", "オッズ比",
+    "相対リスク", "バイオマーカー", "遺伝子発現", "免疫染色", "細胞培養",
+    "動物モデル", "有効性", "有害事象", "選択基準", "除外基準", "追跡調査",
+    # 工程
+    "有限要素", "有限要素法", "数値シミュレーション", "数値解析",
+    "キャラクタリゼーション", "走査電子顕微鏡", "透過電子顕微鏡", "分光分析",
+    "回折", "X線回折", "応力", "ひずみ", "弾性率", "熱処理", "フィードバック制御",
+    "伝達関数", "信号対雑音比", "周波数領域", "時間領域", "境界条件",
+    "メッシュ分割", "材料特性",
+    # 社科
+    "質的研究", "量的研究", "混合研究法", "インタビュー", "半構造化インタビュー",
+    "フォーカスグループ", "事例研究", "グラウンデッドセオリー", "内容分析",
+    "談話分析", "エスノグラフィー", "参与観察", "計量経済", "パネルデータ",
+    "時系列", "操作変数", "固定効果", "ランダム効果", "差分の差分",
+    "回帰不連続", "媒介効果", "調整効果", "構造方程式", "主題分析",
+]
+_XDOM_METHOD_JA_PRO = [
+    "仮説検定", "分散分析", "回帰分析", "カイ二乗検定", "効果量", "サンプルサイズ",
+    "無作為化比較", "二重盲検", "メタ分析", "ランダム化比較試験", "コホート研究",
+    "症例対照研究", "生存分析", "ハザード比", "オッズ比", "有限要素法",
+    "数値シミュレーション", "パネルデータ", "操作変数", "固定効果", "差分の差分",
+    "回帰不連続", "構造方程式", "媒介効果", "調整効果",
+]
+_XDOM_INNOV_JA = [
+    "理論的貢献", "実践的意義", "研究の空白", "空白を埋める", "初めて体系的に",
+    "新たな視点", "新たなパラダイム", "重要な意義",
+]
+
+_XDOM_METHOD_KO_FULL = [
+    # 通用
+    "가설 검정", "유의성 검정", "분산 분석", "회귀 분석", "상관 분석",
+    "카이제곱 검정", "t검정", "효과 크기", "표본 크기", "무작위 추출",
+    "층화 추출", "설문", "설문지", "척도", "신뢰도", "타당도", "대조군",
+    "무작위 대조", "이중 맹검", "메타 분석", "체계적 문헌 고찰", "기술 통계",
+    "유의 수준",
+    # 医学
+    "임상 시험", "무작위 대조 시험", "코호트 연구", "환자 대조군 연구",
+    "단면 연구", "전향적", "후향적", "민감도", "특이도", "생존 분석", "위험비",
+    "오즈비", "상대 위험도", "바이오마커", "유전자 발현", "면역 조직 화학",
+    "세포 배양", "동물 모델", "유효성", "이상 반응", "선정 기준", "제외 기준",
+    "추적 관찰",
+    # 工程
+    "유한 요소", "유한 요소 해석", "수치 시뮬레이션", "수치 해석", "특성 분석",
+    "주사 전자 현미경", "투과 전자 현미경", "분광 분석", "회절", "X선 회절",
+    "응력", "변형", "탄성 계수", "열처리", "피드백 제어", "전달 함수",
+    "신호 대 잡음비", "주파수 영역", "시간 영역", "경계 조건", "격자 분할",
+    "재료 특성",
+    # 社科
+    "질적 연구", "양적 연구", "혼합 연구", "심층 면접", "반구조화 면접",
+    "포커스 그룹", "사례 연구", "근거 이론", "내용 분석", "담화 분석",
+    "문화기술지", "참여 관찰", "계량 경제", "패널 데이터", "시계열",
+    "도구 변수", "고정 효과", "확률 효과", "이중차분", "회귀 불연속",
+    "매개 효과", "조절 효과", "구조 방정식", "주제 분석",
+]
+_XDOM_METHOD_KO_PRO = [
+    "가설 검정", "분산 분석", "회귀 분석", "카이제곱 검정", "효과 크기",
+    "표본 크기", "무작위 대조", "이중 맹검", "메타 분석", "무작위 대조 시험",
+    "코호트 연구", "환자 대조군 연구", "생존 분석", "위험비", "오즈비",
+    "유한 요소 해석", "수치 시뮬레이션", "패널 데이터", "도구 변수",
+    "고정 효과", "이중차분", "회귀 불연속", "구조 방정식", "매개 효과",
+    "조절 효과",
+]
+_XDOM_INNOV_KO = [
+    "이론적 기여", "실천적 의의", "실용적 가치", "연구 공백", "공백을 메우",
+    "처음으로 체계적으로", "새로운 관점", "새로운 패러다임",
+]
+
+_XDOM_METHOD_DE_FULL = [
+    # 通用
+    "hypothesentest", "signifikanztest", "varianzanalyse", "anova",
+    "regressionsanalyse", "korrelationsanalyse", "chi-quadrat-test", "t-test",
+    "effektstärke", "stichprobengröße", "zufallsstichprobe",
+    "geschichtete stichprobe", "fragebogen", "umfrage", "skala",
+    "reliabilität", "validität", "kontrollgruppe", "randomisiert kontrolliert",
+    "doppelblind", "metaanalyse", "systematische übersichtsarbeit",
+    "deskriptive statistik", "signifikanzniveau",
+    # 医学
+    "klinische studie", "randomisierte kontrollierte studie", "kohortenstudie",
+    "fall-kontroll-studie", "querschnittstudie", "prospektiv", "retrospektiv",
+    "sensitivität", "spezifität", "überlebensanalyse", "hazard ratio",
+    "odds ratio", "relatives risiko", "biomarker", "genexpression",
+    "immunhistochemie", "zellkultur", "tiermodell", "wirksamkeit",
+    "unerwünschte wirkung", "einschlusskriterien", "ausschlusskriterien",
+    "nachbeobachtung",
+    # 工程
+    "finite elemente", "finite-elemente-methode", "numerische simulation",
+    "numerische analyse", "charakterisierung", "rasterelektronenmikroskop",
+    "transmissionselektronenmikroskop", "spektroskopie", "beugung",
+    "röntgenbeugung", "spannung", "dehnung", "elastizitätsmodul",
+    "wärmebehandlung", "rückkopplungsregelung", "übertragungsfunktion",
+    "signal-rausch-verhältnis", "frequenzbereich", "zeitbereich",
+    "randbedingung", "netzgenerierung", "materialeigenschaften",
+    # 社科
+    "qualitative forschung", "quantitative forschung", "mixed methods",
+    "interview", "halbstrukturiertes interview", "fokusgruppe", "fallstudie",
+    "grounded theory", "inhaltsanalyse", "diskursanalyse", "ethnographie",
+    "teilnehmende beobachtung", "ökonometrie", "paneldaten", "zeitreihe",
+    "instrumentvariable", "feste effekte", "zufallseffekte",
+    "differenz-von-differenzen", "regressionsdiskontinuität", "mediation",
+    "moderation", "strukturgleichungsmodell", "thematische analyse",
+]
+_XDOM_METHOD_DE_PRO = [
+    "hypothesentest", "varianzanalyse", "regressionsanalyse", "chi-quadrat-test",
+    "effektstärke", "stichprobengröße", "randomisiert kontrolliert",
+    "doppelblind", "metaanalyse", "randomisierte kontrollierte studie",
+    "kohortenstudie", "fall-kontroll-studie", "überlebensanalyse",
+    "hazard ratio", "odds ratio", "finite-elemente-methode",
+    "numerische simulation", "paneldaten", "instrumentvariable",
+    "feste effekte", "differenz-von-differenzen", "regressionsdiskontinuität",
+    "strukturgleichungsmodell", "mediation", "moderation",
+]
+_XDOM_INNOV_DE = [
+    "theoretischer beitrag", "praktische implikation", "praktische bedeutung",
+    "forschungslücke", "schließt eine lücke", "erstmals systematisch",
+    "neue perspektive", "neues paradigma",
+]
+
+# 便捷聚合：跨学科词库按用途拼好，供 SCORE_PROFILES 直接引用
+_XDOM_METHOD_FULL = (_XDOM_METHOD_ZHEN_FULL + _XDOM_METHOD_JA_FULL
+                     + _XDOM_METHOD_KO_FULL + _XDOM_METHOD_DE_FULL)
+_XDOM_METHOD_PRO = (_XDOM_METHOD_ZHEN_PRO + _XDOM_METHOD_JA_PRO
+                    + _XDOM_METHOD_KO_PRO + _XDOM_METHOD_DE_PRO)
+_XDOM_INNOV_ALL = (_XDOM_INNOV_ZHEN + _XDOM_INNOV_JA
+                   + _XDOM_INNOV_KO + _XDOM_INNOV_DE)
 
 
 # 三档评分尺度。cap = 总分上限（老师默认 85，前端滑块可在 70~100 调；专家 72；教授 65）。
@@ -521,30 +886,299 @@ _METHOD_KW_JA_PROFESSOR = [
 SCORE_PROFILES = {
     "teacher": {
         "label": "老师", "cap": 85,
-        "innovation_kw": _INNOVATION_KW_TEACHER + _INNOVATION_KW_JA_TEACHER, "innovation_coef": 2.5,
-        "method_kw": _METHOD_KW_TEACHER + _METHOD_KW_JA_TEACHER, "method_coef": 1.5,
+        "innovation_kw": _INNOVATION_KW_TEACHER + _INNOVATION_KW_JA_TEACHER + _INNOVATION_KW_KO_TEACHER + _INNOVATION_KW_DE_TEACHER + _XDOM_INNOV_ALL, "innovation_coef": 2.5,
+        "method_kw": _METHOD_KW_TEACHER + _METHOD_KW_JA_TEACHER + _METHOD_KW_KO_TEACHER + _METHOD_KW_DE_TEACHER + _XDOM_METHOD_FULL, "method_coef": 1.5,
         "data_expr": 12, "data_conc": 8, "data_cross": 5,
         "num_strict": False,
     },
     "expert": {
         "label": "专家", "cap": 72,
-        "innovation_kw": _INNOVATION_KW_EXPERT + _INNOVATION_KW_JA_EXPERT, "innovation_coef": 2.2,
-        "method_kw": _METHOD_KW_EXPERT + _METHOD_KW_JA_EXPERT, "method_coef": 1.3,
+        "innovation_kw": _INNOVATION_KW_EXPERT + _INNOVATION_KW_JA_EXPERT + _INNOVATION_KW_KO_EXPERT + _INNOVATION_KW_DE_EXPERT + _XDOM_INNOV_ALL, "innovation_coef": 2.2,
+        "method_kw": _METHOD_KW_EXPERT + _METHOD_KW_JA_EXPERT + _METHOD_KW_KO_EXPERT + _METHOD_KW_DE_EXPERT + _XDOM_METHOD_FULL, "method_coef": 1.3,
         "data_expr": 10, "data_conc": 7, "data_cross": 5,
         "num_strict": False,
     },
     "professor": {
         "label": "教授", "cap": 65,
         # 压低系数 + 数据上限：让扎实论文从挤在 59~65 摊到 ~50~65，有短板的(创新弱/数据少)掉得下去、拉开区分度
-        "innovation_kw": _INNOVATION_KW_PROFESSOR + _INNOVATION_KW_JA_PROFESSOR, "innovation_coef": 1.7,
-        "method_kw": _METHOD_KW_PROFESSOR + _METHOD_KW_JA_PROFESSOR, "method_coef": 1.0,
+        "innovation_kw": _INNOVATION_KW_PROFESSOR + _INNOVATION_KW_JA_PROFESSOR + _INNOVATION_KW_KO_PROFESSOR + _INNOVATION_KW_DE_PROFESSOR, "innovation_coef": 1.7,
+        "method_kw": _METHOD_KW_PROFESSOR + _METHOD_KW_JA_PROFESSOR + _METHOD_KW_KO_PROFESSOR + _METHOD_KW_DE_PROFESSOR + _XDOM_METHOD_PRO, "method_coef": 1.0,
         "data_expr": 7, "data_conc": 6, "data_cross": 4,
         "num_strict": True,  # 数据只认带单位/百分比/小数，裸整数不算量化指标
     },
 }
 
+# 各档「饱和率」：命中深度→分数走凹曲线 1-(1-rate)^n，杜绝堆词顶格（越严的档 rate 越低，要更多命中才给分）
+_SAT_RATE = {"teacher": 0.55, "expert": 0.46, "professor": 0.38}
 
-def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
+
+# ════════════════════════════════════════════════════════════════════════════
+# 学科评分档（subject）：用户手选论文所属学科 → 用该学科的「方法学功能类别」评方法维度。
+# 动机：词库扩到上千后，"命中词数×系数"会天花板 + 奖励堆词（写得烂也判高，误导学生）。
+# 改为「类别覆盖为主(0.6) + 命中深度·饱和为辅(0.4)」：必须跨多个方法学环节才能高分，
+# 堆某一类词顶不满 → 直接治「堆词判高」。category = 该学科期望具备的方法学环节，命中≥1即算覆盖。
+# 各类别：中英全 + 日/韩/德关键词（AI 初译·待母语校对）。命中判定为大小写不敏感子串。
+# ════════════════════════════════════════════════════════════════════════════
+SUBJECT_RUBRICS = {
+    "cs": {
+        "label": "计算机 / 人工智能",
+        "categories": {
+            "模型与架构": [
+                "模型", "网络", "架构", "模块", "神经网络", "卷积", "注意力",
+                "自注意力", "多头注意力", "编码器", "解码器", "嵌入",
+                "model", "network", "architecture", "module", "neural network",
+                "convolution", "attention", "self-attention", "transformer",
+                "encoder", "decoder", "embedding",
+                "モデル", "ネットワーク", "アーキテクチャ", "注意機構", "エンコーダ",
+                "모델", "네트워크", "아키텍처", "어텐션", "인코더",
+                "modell", "netzwerk", "architektur", "aufmerksamkeit", "encoder",
+            ],
+            "训练与优化": [
+                "训练", "优化", "损失函数", "目标函数", "梯度", "学习率", "批大小",
+                "正则化", "反向传播", "微调", "预训练",
+                "training", "optimizer", "loss function", "gradient",
+                "learning rate", "batch size", "regularization",
+                "backpropagation", "fine-tune", "pretrain",
+                "学習", "最適化", "損失関数", "学習率", "事前学習",
+                "학습", "최적화", "손실 함수", "학습률", "사전 학습",
+                "optimierung", "verlustfunktion", "lernrate", "vortraining",
+            ],
+            "数据与实验设计": [
+                "数据集", "实验设置", "消融", "消融实验", "基线", "对比实验",
+                "交叉验证", "数据增强",
+                "dataset", "experimental setup", "ablation", "baseline",
+                "comparison", "cross-validation", "data augmentation",
+                "データセット", "アブレーション", "ベースライン", "交差検証",
+                "데이터셋", "어블레이션", "베이스라인", "교차 검증",
+                "datensatz", "ablation", "baseline", "kreuzvalidierung",
+            ],
+            "评估与指标": [
+                "准确率", "召回率", "精确率", "评价指标", "混淆矩阵", "泛化",
+                "鲁棒性", "f1值", "auc",
+                "accuracy", "precision", "recall", "f1 score", "evaluation metric",
+                "confusion matrix", "generalization", "robustness",
+                "正解率", "適合率", "再現率", "評価指標", "f1スコア",
+                "정확도", "정밀도", "재현율", "평가 지표",
+                "genauigkeit", "präzision", "trefferquote", "bewertungsmetrik",
+            ],
+        },
+    },
+    "medical": {
+        "label": "医学 / 生命科学",
+        "categories": {
+            "研究设计": [
+                "临床试验", "随机对照试验", "队列研究", "病例对照", "横断面研究",
+                "前瞻性", "回顾性", "对照组", "双盲", "随机分组",
+                "clinical trial", "randomized controlled trial", "cohort study",
+                "case-control", "cross-sectional", "prospective", "retrospective",
+                "control group", "double-blind", "randomization",
+                "臨床試験", "ランダム化比較試験", "コホート研究", "二重盲検",
+                "임상 시험", "무작위 대조 시험", "코호트 연구", "이중 맹검",
+                "klinische studie", "randomisierte kontrollierte studie",
+                "kohortenstudie", "doppelblind",
+            ],
+            "统计推断": [
+                "方差分析", "回归分析", "卡方检验", "t检验", "生存分析", "风险比",
+                "比值比", "效应量", "样本量", "p值", "置信区间",
+                "analysis of variance", "anova", "regression", "chi-square",
+                "t-test", "survival analysis", "hazard ratio", "odds ratio",
+                "effect size", "sample size", "p-value", "confidence interval",
+                "分散分析", "回帰分析", "生存分析", "ハザード比", "サンプルサイズ",
+                "분산 분석", "회귀 분석", "생존 분석", "위험비", "표본 크기",
+                "varianzanalyse", "regressionsanalyse", "überlebensanalyse",
+                "hazard ratio", "stichprobengröße",
+            ],
+            "指标与结局": [
+                "敏感度", "特异度", "有效率", "疗效", "生物标志物", "主要终点",
+                "不良反应",
+                "sensitivity", "specificity", "efficacy", "biomarker",
+                "primary endpoint", "adverse effect",
+                "感度", "特異度", "有効性", "バイオマーカー", "有害事象",
+                "민감도", "특이도", "유효성", "바이오마커",
+                "sensitivität", "spezifität", "wirksamkeit", "biomarker",
+            ],
+            "样本与流程": [
+                "纳入标准", "排除标准", "随访", "受试者", "病例", "患者", "队列",
+                "inclusion criteria", "exclusion criteria", "follow-up",
+                "subjects", "patients",
+                "選択基準", "除外基準", "追跡調査", "被験者",
+                "선정 기준", "제외 기준", "추적 관찰", "피험자",
+                "einschlusskriterien", "ausschlusskriterien", "nachbeobachtung",
+                "probanden",
+            ],
+        },
+    },
+    "engineering": {
+        "label": "工程 / 物理 / 材料",
+        "categories": {
+            "建模与仿真": [
+                "有限元", "有限元分析", "数值模拟", "数值仿真", "建模", "边界条件",
+                "网格划分", "求解",
+                "finite element", "numerical simulation", "modeling",
+                "boundary condition", "mesh", "solver",
+                "有限要素法", "数値シミュレーション", "境界条件", "メッシュ分割",
+                "유한 요소 해석", "수치 시뮬레이션", "경계 조건", "격자 분할",
+                "finite-elemente-methode", "numerische simulation",
+                "randbedingung", "netzgenerierung",
+            ],
+            "表征与测量": [
+                "扫描电镜", "透射电镜", "光谱", "光谱分析", "衍射", "x射线衍射",
+                "表征", "显微镜",
+                "scanning electron microscopy", "transmission electron microscopy",
+                "spectroscopy", "diffraction", "x-ray diffraction",
+                "characterization", "microscopy",
+                "走査電子顕微鏡", "透過電子顕微鏡", "分光分析", "x線回折",
+                "주사 전자 현미경", "분광 분석", "x선 회절", "특성 분석",
+                "rasterelektronenmikroskop", "spektroskopie", "röntgenbeugung",
+                "charakterisierung",
+            ],
+            "物理量与性能": [
+                "应力", "应变", "弹性模量", "强度", "信噪比", "频率", "效率",
+                "材料性能",
+                "stress", "strain", "elastic modulus", "strength",
+                "signal-to-noise", "frequency", "efficiency", "material properties",
+                "応力", "ひずみ", "弾性率", "信号対雑音比", "材料特性",
+                "응력", "변형", "탄성 계수", "신호 대 잡음비", "재료 특성",
+                "spannung", "dehnung", "elastizitätsmodul",
+                "signal-rausch-verhältnis", "materialeigenschaften",
+            ],
+            "控制与系统": [
+                "控制系统", "反馈控制", "传递函数", "频域", "时域", "系统模型",
+                "稳定性",
+                "control system", "feedback control", "transfer function",
+                "frequency domain", "time domain", "system model", "stability",
+                "フィードバック制御", "伝達関数", "周波数領域", "時間領域",
+                "피드백 제어", "전달 함수", "주파수 영역", "시간 영역",
+                "rückkopplungsregelung", "übertragungsfunktion", "frequenzbereich",
+                "zeitbereich",
+            ],
+        },
+    },
+    "social": {
+        "label": "社科 / 经管 / 人文",
+        "categories": {
+            "研究设计": [
+                "质性研究", "定性研究", "定量研究", "混合方法", "案例研究",
+                "实验设计", "准实验",
+                "qualitative research", "quantitative research", "mixed methods",
+                "case study", "experimental design", "quasi-experiment",
+                "質的研究", "量的研究", "混合研究法", "事例研究",
+                "질적 연구", "양적 연구", "혼합 연구", "사례 연구",
+                "qualitative forschung", "quantitative forschung", "mixed methods",
+                "fallstudie",
+            ],
+            "数据收集": [
+                "访谈", "深度访谈", "半结构化访谈", "问卷", "问卷调查", "焦点小组",
+                "参与观察", "量表",
+                "interview", "in-depth interview", "semi-structured interview",
+                "questionnaire", "survey", "focus group", "participant observation",
+                "scale",
+                "インタビュー", "質問紙", "フォーカスグループ", "参与観察",
+                "면접", "설문지", "포커스 그룹", "참여 관찰",
+                "fragebogen", "fokusgruppe", "teilnehmende beobachtung",
+            ],
+            "分析方法": [
+                "内容分析", "话语分析", "主题分析", "扎根理论", "民族志", "编码",
+                "content analysis", "discourse analysis", "thematic analysis",
+                "grounded theory", "ethnography", "coding",
+                "内容分析", "談話分析", "グラウンデッドセオリー", "主題分析",
+                "내용 분석", "담화 분석", "근거 이론", "주제 분석",
+                "inhaltsanalyse", "diskursanalyse", "grounded theory",
+                "thematische analyse",
+            ],
+            "计量与统计": [
+                "计量经济", "面板数据", "时间序列", "工具变量", "固定效应",
+                "双重差分", "断点回归", "中介效应", "调节效应", "结构方程",
+                "回归分析", "显著性",
+                "econometric", "panel data", "time series", "instrumental variable",
+                "fixed effects", "difference-in-differences",
+                "regression discontinuity", "mediation", "moderation",
+                "structural equation", "regression", "significance",
+                "計量経済", "パネルデータ", "操作変数", "固定効果", "構造方程式",
+                "계량 경제", "패널 데이터", "도구 변수", "고정 효과", "구조 방정식",
+                "ökonometrie", "paneldaten", "instrumentvariable", "feste effekte",
+                "strukturgleichungsmodell",
+            ],
+        },
+    },
+    "general": {
+        "label": "通用 / 不确定",
+        "categories": {
+            "研究设计与流程": [
+                "实验设计", "对照组", "随机", "案例研究", "研究方法", "系统设计",
+                "技术方案", "临床试验", "仿真", "建模",
+                "experimental design", "control group", "randomized", "case study",
+                "research method", "system design", "simulation", "modeling",
+                "clinical trial",
+                "実験設定", "対照群", "研究方法", "提案手法",
+                "실험 설정", "대조군", "연구 방법", "제안 방법",
+                "versuchsaufbau", "kontrollgruppe", "methode", "ansatz",
+            ],
+            "定量与统计": [
+                "方差分析", "回归分析", "卡方检验", "t检验", "显著性", "效应量",
+                "样本量", "置信区间", "p值", "统计",
+                "analysis of variance", "regression", "chi-square", "t-test",
+                "significance", "effect size", "sample size", "confidence interval",
+                "p-value", "statistical",
+                "分散分析", "回帰分析", "有意", "サンプルサイズ",
+                "분산 분석", "회귀 분석", "유의", "표본 크기",
+                "varianzanalyse", "regressionsanalyse", "signifikanz",
+                "stichprobengröße",
+            ],
+            "数据与样本": [
+                "数据集", "样本", "数据", "问卷", "面板数据", "时间序列",
+                "纳入标准", "随访",
+                "dataset", "sample", "data", "questionnaire", "panel data",
+                "time series", "inclusion criteria", "follow-up",
+                "データセット", "標本", "データ", "質問紙",
+                "데이터셋", "표본", "데이터", "설문지",
+                "datensatz", "stichprobe", "daten", "fragebogen",
+            ],
+            "评估与分析": [
+                "评价指标", "准确率", "敏感度", "有效率", "内容分析", "主题分析",
+                "消融", "基线", "对比",
+                "evaluation metric", "accuracy", "sensitivity", "efficacy",
+                "content analysis", "thematic analysis", "ablation", "baseline",
+                "comparison",
+                "評価指標", "正解率", "内容分析", "ベースライン",
+                "평가 지표", "정확도", "내용 분석", "베이스라인",
+                "bewertungsmetrik", "genauigkeit", "inhaltsanalyse", "baseline",
+            ],
+        },
+    },
+}
+
+
+def _saturate(n, rate=0.5):
+    """命中深度 n → [0,1) 凹曲线：1-(1-rate)^n。前几个命中给分快，之后衰减，杜绝堆词顶格。"""
+    if n <= 0:
+        return 0.0
+    return 1.0 - (1.0 - rate) ** n
+
+
+def _score_confidence(text_len, subject, covered, ncats, depth_hits, innov_count):
+    """规则分「置信度」：文本太短 / 疑似堆词（命中集中单一环节）/ 命中过少 / 覆盖不足 → 降。
+    返回 {score:0~1, level:'高|中|低', reasons:[...]}。用于提示学生「何时别太信这个数」。"""
+    score = 1.0
+    reasons = []
+    if text_len < 800:
+        score -= 0.35
+        reasons.append("正文偏短，可判据不足")
+    if depth_hits >= 8 and covered <= 1:
+        score -= 0.30
+        reasons.append("命中集中在单一方法环节，疑似术语堆砌")
+    if innov_count == 0 and depth_hits <= 1:
+        score -= 0.30
+        reasons.append("方法/创新关键词命中很少，规则分参考性低")
+    if subject != "general" and ncats and covered <= 1:
+        score -= 0.15
+        reasons.append("方法学环节覆盖不足")
+    score = max(0.0, min(1.0, score))
+    level = "高" if score >= 0.75 else ("中" if score >= 0.45 else "低")
+    return {"score": round(score, 2), "level": level, "reasons": reasons}
+
+
+def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85, subject='general'):
     """
     本地自研算法：四维论文质量评分。
     不依赖任何外部 API，全程本地计算。
@@ -598,13 +1232,16 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
     }
 
     # ── 维度2：创新声明密度（满分 25）──────────────────────────────────
-    innovation_kw = prof["innovation_kw"]
+    # 去重：多语言/跨学科词库叠加可能出现重复词，去重避免同一词被重复计数
+    innovation_kw = list(dict.fromkeys(prof["innovation_kw"]))
     innov_src = (sections.get("abstract", "") + " " + text)
     innov_text = innov_src.lower()
     innov_hits = [kw for kw in innovation_kw if kw.lower() in innov_text]
     sem_innov = semantic.extra_hits(innov_src, innovation_kw, innov_hits)  # C6 语义命中（模型不可用则为 0）
     innov_count = len(innov_hits) + sem_innov
-    innov_score = min(25, round(innov_count * prof["innovation_coef"]))
+    # 饱和曲线替代「命中数×系数」：前几处创新声明给分快，之后衰减，防堆词顶格（严苛度由各档 rate + 词库共同决定）
+    _sat_rate = _SAT_RATE.get(mode, 0.5)
+    innov_score = round(25 * _saturate(innov_count, _sat_rate))
     innov_suggestions = []
     if innov_count == 0:
         innov_suggestions.append("摘要和正文中未检测到明确的创新声明，建议在摘要中加入\"本文提出/设计/构建了...\"类句式")
@@ -658,21 +1295,42 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
     }
 
     # ── 维度4：方法描述完整性（满分 25）──────────────────────────────────
-    method_kw = prof["method_kw"]
-    # 方法词在全文找：方法描述常分散在 系统模型 / 所提方法 / 实验 各段，不限"方法"章节那一段
+    # 学科自适应：按用户手选 subject 取该学科的「方法学功能类别」。
+    #   覆盖(coverage 0.6)＝命中了几个方法学环节（广度）；深度(depth 0.4)＝跨环节去重命中数走饱和。
+    #   → 只堆某一类词 coverage 上不去、顶不满，必须跨环节才高分；直接治「堆词判高、写烂判对」。
+    rubric = SUBJECT_RUBRICS.get(subject, SUBJECT_RUBRICS["general"])
+    cats = rubric["categories"]
     method_text = text
-    method_hits = [kw for kw in method_kw if kw.lower() in method_text.lower()]
-    sem_method = semantic.extra_hits(method_text, method_kw, method_hits)  # C6 语义命中（模型不可用则为 0）
-    method_count = len(method_hits) + sem_method
-    method_score = min(25, round(method_count * prof["method_coef"]))
+    m_low = method_text.lower()
+    covered = 0
+    all_hits = set()          # 跨类别去重的字面命中（用于深度）
+    cat_detail = []
+    for cname, kws in cats.items():
+        hits = [k for k in kws if k.lower() in m_low]
+        if hits:
+            covered += 1
+            cat_detail.append(cname)
+            all_hits.update(h.lower() for h in hits)
+    # 语义兜底：对该学科全部类别词做一次语义补充（模型不可用则为 0），并进深度
+    _pool = [k for kws in cats.values() for k in kws]
+    sem_method = semantic.extra_hits(method_text, _pool, list(all_hits))
+    depth_hits = len(all_hits) + sem_method
+    ncats = max(1, len(cats))
+    coverage = covered / ncats
+    depth = _saturate(depth_hits, _SAT_RATE.get(mode, 0.5))
+    method_ratio = 0.6 * coverage + 0.4 * depth
+    method_score = round(25 * method_ratio)
     method_suggestions = []
-    if method_count < 3:
-        method_suggestions.append("方法描述较简略，建议补充：算法步骤/模型框架/超参数设置等内容")
-    if "消融" not in method_text and "ablation" not in method_text.lower():
-        method_suggestions.append("未检测到消融实验，建议增加消融分析以验证各模块的独立贡献")
-    if "baseline" not in method_text.lower() and "对比" not in method_text:
-        method_suggestions.append("未检测到基线对比，建议与同类方法进行对比实验并列出数值结果")
-    method_detail = f"检测到 {len(method_hits)} 个方法描述关键词" + (f"（+{sem_method} 处语义相近）" if sem_method else "")
+    if covered < ncats:
+        _missing = [c for c in cats if c not in cat_detail]
+        method_suggestions.append(
+            f"「{rubric['label']}」方法学环节未覆盖全：缺 {('、'.join(_missing)) or '无'}；"
+            f"建议补充这些环节的描述（覆盖 {covered}/{ncats}）")
+    if depth_hits < 3:
+        method_suggestions.append("方法描述较简略，建议补充：研究设计/关键步骤/评估方式等具体内容")
+    method_detail = (f"覆盖 {covered}/{ncats} 个方法学环节"
+                     + (f"（{'、'.join(cat_detail)}）" if cat_detail else "")
+                     + f"；命中 {len(all_hits)} 词" + (f"（+{sem_method} 处语义相近）" if sem_method else ""))
 
     result["dimensions"]["method"] = {
         "score": method_score, "max": 25,
@@ -694,12 +1352,20 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85):
         cap = prof.get("cap", 100)
     result["total"] = min(total, cap)
     result["cap"] = cap
+    result["subject"] = {"key": subject, "label": rubric["label"]}
+
+    # 置信度：规则分只反映结构/方法完整度，不等于内容质量。文本短/疑似堆词/命中过少 → 低置信。
+    conf = _score_confidence(len(text or ""), subject, covered, ncats, depth_hits, innov_count)
+    conf["caveat"] = "本地规则分只反映结构与方法完整度，不代表内容质量或写作水平；深度质量判断请以 AI 分析为准。"
+    result["confidence"] = conf
 
     # 全局建议（按分数最低维度优先）
     dims_sorted = sorted(result["dimensions"].values(), key=lambda d: d["score"] / d["max"])
     for d in dims_sorted:
         if d["suggestions"]:
             result["suggestions"].extend(d["suggestions"][:1])  # 每维度最多取首条
+    if conf["level"] == "低":
+        result["suggestions"].insert(0, "⚠️ 规则分置信度低（" + "；".join(conf["reasons"]) + "），请以 AI 深度分析为准")
 
     return result
 
@@ -1619,7 +2285,10 @@ def _analyze_and_respond(path, display_filename):
     except (TypeError, ValueError):
         teacher_cap = 85
     teacher_cap = max(70, min(100, teacher_cap))
-    quality_score = analyze_paper_quality(text, sections, score_mode, teacher_cap)
+    subject = (request.form.get('subject', 'general') or 'general').strip().lower()
+    if subject not in SUBJECT_RUBRICS:
+        subject = 'general'
+    quality_score = analyze_paper_quality(text, sections, score_mode, teacher_cap, subject)
 
     # AI 深度分析：三档独立引擎，按优先级 v4pro 高级 > 用户填的 Key > 本地大模型 选用。
     # v4pro = deepseek-v3 高级模式（产品线包装）：5h 滚动窗口最多 5 次，配额闸门在后端
