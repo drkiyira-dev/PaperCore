@@ -916,12 +916,28 @@ _SAT_RATE = {"teacher": 0.55, "expert": 0.46, "professor": 0.38}
 _SAT_RATE_DEPTH = {"teacher": 0.20, "expert": 0.17, "professor": 0.14}
 
 
+# ── 通用层（Universal）：跨学科共有的方法学词，抽成单一来源供各学科类别引用（去重复维护）──
+# 三层词库思路（Universal → 学科增量）的第一块：先抽「统计推断」这一最清晰的通用簇。
+# 各学科的统计类别 = _UNIVERSAL_STATS + 本学科增量。中英全 + 日/韩/德关键词。
+_UNIVERSAL_STATS = [
+    "方差分析", "回归分析", "卡方检验", "t检验", "显著性", "效应量",
+    "样本量", "置信区间", "p值", "统计",
+    "analysis of variance", "anova", "regression", "chi-square", "t-test",
+    "significance", "effect size", "sample size", "confidence interval",
+    "p-value", "statistical",
+    "分散分析", "回帰分析", "有意", "サンプルサイズ",
+    "분산 분석", "회귀 분석", "유의", "표본 크기",
+    "varianzanalyse", "regressionsanalyse", "signifikanz", "stichprobengröße",
+]
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # 学科评分档（subject）：用户手选论文所属学科 → 用该学科的「方法学功能类别」评方法维度。
 # 动机：词库扩到上千后，"命中词数×系数"会天花板 + 奖励堆词（写得烂也判高，误导学生）。
 # 改为「类别覆盖为主(0.6) + 命中深度·饱和为辅(0.4)」：必须跨多个方法学环节才能高分，
 # 堆某一类词顶不满 → 直接治「堆词判高」。category = 该学科期望具备的方法学环节，命中≥1即算覆盖。
 # 各类别：中英全 + 日/韩/德关键词（AI 初译·待母语校对）。命中判定为大小写不敏感子串。
+# 统计类别统一引用 _UNIVERSAL_STATS（通用层）+ 本学科增量，见 general/medical/social。
 # ════════════════════════════════════════════════════════════════════════════
 SUBJECT_RUBRICS = {
     "cs": {
@@ -981,16 +997,13 @@ SUBJECT_RUBRICS = {
                 "klinische studie", "randomisierte kontrollierte studie",
                 "kohortenstudie", "doppelblind",
             ],
-            "统计推断": [
-                "方差分析", "回归分析", "卡方检验", "t检验", "生存分析", "风险比",
-                "比值比", "效应量", "样本量", "p值", "置信区间",
-                "analysis of variance", "anova", "regression", "chi-square",
-                "t-test", "survival analysis", "hazard ratio", "odds ratio",
-                "effect size", "sample size", "p-value", "confidence interval",
-                "分散分析", "回帰分析", "生存分析", "ハザード比", "サンプルサイズ",
-                "분산 분석", "회귀 분석", "생존 분석", "위험비", "표본 크기",
-                "varianzanalyse", "regressionsanalyse", "überlebensanalyse",
-                "hazard ratio", "stichprobengröße",
+            "统计推断": _UNIVERSAL_STATS + [
+                # 医学统计增量（生存分析/风险比/比值比等）
+                "生存分析", "风险比", "比值比",
+                "survival analysis", "hazard ratio", "odds ratio",
+                "生存分析", "ハザード比",
+                "생존 분석", "위험비",
+                "überlebensanalyse",
             ],
             "指标与结局": [
                 "敏感度", "特异度", "有效率", "疗效", "生物标志物", "主要终点",
@@ -1090,14 +1103,14 @@ SUBJECT_RUBRICS = {
                 "inhaltsanalyse", "diskursanalyse", "grounded theory",
                 "thematische analyse",
             ],
-            "计量与统计": [
+            "计量与统计": _UNIVERSAL_STATS + [
+                # 社科/经管计量增量（计量经济/面板/工具变量/双重差分/结构方程等）
                 "计量经济", "面板数据", "时间序列", "工具变量", "固定效应",
                 "双重差分", "断点回归", "中介效应", "调节效应", "结构方程",
-                "回归分析", "显著性",
                 "econometric", "panel data", "time series", "instrumental variable",
                 "fixed effects", "difference-in-differences",
                 "regression discontinuity", "mediation", "moderation",
-                "structural equation", "regression", "significance",
+                "structural equation",
                 "計量経済", "パネルデータ", "操作変数", "固定効果", "構造方程式",
                 "계량 경제", "패널 데이터", "도구 변수", "고정 효과", "구조 방정식",
                 "ökonometrie", "paneldaten", "instrumentvariable", "feste effekte",
@@ -1118,17 +1131,7 @@ SUBJECT_RUBRICS = {
                 "실험 설정", "대조군", "연구 방법", "제안 방법",
                 "versuchsaufbau", "kontrollgruppe", "methode", "ansatz",
             ],
-            "定量与统计": [
-                "方差分析", "回归分析", "卡方检验", "t检验", "显著性", "效应量",
-                "样本量", "置信区间", "p值", "统计",
-                "analysis of variance", "regression", "chi-square", "t-test",
-                "significance", "effect size", "sample size", "confidence interval",
-                "p-value", "statistical",
-                "分散分析", "回帰分析", "有意", "サンプルサイズ",
-                "분산 분석", "회귀 분석", "유의", "표본 크기",
-                "varianzanalyse", "regressionsanalyse", "signifikanz",
-                "stichprobengröße",
-            ],
+            "定量与统计": list(_UNIVERSAL_STATS),
             "数据与样本": [
                 "数据集", "样本", "数据", "问卷", "面板数据", "时间序列",
                 "纳入标准", "随访",
