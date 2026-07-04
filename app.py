@@ -1137,33 +1137,30 @@ SUBJECT_RUBRICS = {
     "theory": {
         "label": "数学 / 理论",
         "categories": {
-            "问题建模与假设": [
-                "问题建模", "假设", "前提", "定义", "记号", "设定", "模型",
-                "框架", "猜想", "公理", "命题",
-                "problem formulation", "assumption", "definition", "notation",
-                "setting", "framework", "conjecture", "axiom", "hypothesis",
-                "model",
+            # 刻意只留「理论专属」硬信号，剔除 模型/算法/优化/分析/稳定性/误差 等谁都写得出的泛词，
+            # 否则 theory 会在任何技术论文上覆盖 4/4（批量诊断实测过度命中）。
+            "定义与假设": [
+                "定义", "记号", "假设", "前提", "命题", "猜想", "公理", "设为",
+                "definition", "notation", "assumption", "proposition",
+                "conjecture", "axiom", "let us define",
             ],
             "定理与证明": [
-                "定理", "引理", "推论", "命题", "证明", "反证", "归纳", "构造",
-                "充分", "必要", "充要", "性质", "证毕",
-                "theorem", "lemma", "corollary", "proposition", "proof",
-                "contradiction", "induction", "sufficient", "necessary",
-                "property", "qed",
+                "定理", "引理", "推论", "证明", "反证法", "归纳法", "构造性证明",
+                "证毕", "当且仅当", "充要条件",
+                "theorem", "lemma", "corollary", "proof", "by contradiction",
+                "by induction", "if and only if", "q.e.d", "qed",
             ],
-            "算法与复杂度": [
-                "算法", "复杂度", "时间复杂度", "空间复杂度", "最优", "近似",
-                "上界", "下界", "界", "多项式", "np", "可解", "归约",
-                "algorithm", "complexity", "time complexity", "space complexity",
-                "optimal", "approximation", "upper bound", "lower bound",
-                "polynomial", "np-hard", "reduction",
+            "界与复杂度": [
+                "上界", "下界", "紧致", "复杂度", "时间复杂度", "空间复杂度",
+                "多项式时间", "np-hard", "np完全", "归约", "最优性",
+                "upper bound", "lower bound", "complexity", "polynomial time",
+                "np-hard", "np-complete", "reduction", "tight bound",
             ],
-            "收敛性与分析": [
-                "收敛", "收敛性", "稳定性", "存在性", "唯一性", "有界", "连续",
-                "极限", "渐近", "误差", "估计", "不等式", "范数", "测度",
-                "convergence", "stability", "existence", "uniqueness", "bounded",
-                "continuous", "limit", "asymptotic", "error", "estimate",
-                "inequality", "norm", "measure",
+            "收敛与存在性": [
+                "收敛性", "存在性", "唯一性", "有界性", "渐近", "范数", "测度",
+                "不等式", "连续性", "紧性", "解的存在",
+                "convergence", "existence", "uniqueness", "boundedness",
+                "asymptotic", "norm", "measure", "inequality", "well-posed",
             ],
         },
     },
@@ -1251,17 +1248,18 @@ SUBJECT_RUBRICS = {
                 "receptor", "transcription", "translation", "mutation",
                 "binding",
             ],
-            "样本与统计分析": [
-                "样本", "对照", "处理组", "表型", "生物信息", "差异表达",
-                "富集分析", "显著差异", "重复",
-                "sample", "control", "phenotype", "bioinformatics",
-                "differential expression", "enrichment", "replicate",
+            # 剔除 样本/对照/模型/机制/显著 等通用词（否则任何实证论文都蒙 3/4），只留生物专属
+            "表型与生信分析": [
+                "表型", "生物信息", "差异表达", "富集分析", "基因型",
+                "转录组", "测序数据", "通路富集",
+                "phenotype", "bioinformatics", "differential expression",
+                "enrichment", "genotype", "transcriptome", "rna-seq",
             ],
             "模型与机制": [
-                "模型", "动物模型", "体外", "体内", "机制", "调控", "表观遗传",
-                "代谢", "稳态", "进化",
-                "animal model", "in vitro", "in vivo", "mechanism",
-                "regulation", "epigenetic", "metabolism", "homeostasis",
+                "动物模型", "小鼠模型", "体外", "体内", "表观遗传", "代谢",
+                "信号转导", "分子机制", "调控网络", "进化",
+                "animal model", "in vitro", "in vivo", "epigenetic",
+                "metabolism", "signal transduction", "regulatory network",
                 "evolution",
             ],
         },
