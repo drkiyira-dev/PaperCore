@@ -97,3 +97,32 @@ def test_materials_subject_fits_better_than_engineering():
 def test_materials_is_valid_subject():
     assert "materials" in app.SUBJECT_RUBRICS
     assert len(app.SUBJECT_RUBRICS["materials"]["categories"]) == 4
+
+
+def test_new_subjects_registered():
+    """theory/electronics/civil/biology 均为合法学科档，各 4 个方法学环节。"""
+    for subj in ("theory", "electronics", "civil", "biology"):
+        assert subj in app.SUBJECT_RUBRICS, f"缺学科档 {subj}"
+        assert len(app.SUBJECT_RUBRICS[subj]["categories"]) == 4
+
+
+def test_theory_fits_math_paper():
+    """纯理论论文（定理/证明/收敛）在 theory 档应显著高于误用 general（实证型环节命不中）。"""
+    math = ("摘要：本文研究某算子的有界性。\n"
+            "2 预备与定义：设 X 为度量空间，给出记号与假设，提出如下猜想。\n"
+            "3 主要结果：定理 1 成立。引理 2 给出上界。证明：由归纳法与反证，构造映射，"
+            "利用不等式与范数估计，得到收敛性与唯一性，证毕。分析其时间复杂度为多项式。\n"
+            "4 结论：证明了该算子的有界性与存在唯一性，推广了已有结果。")
+    s = app.extract_sections(math)
+    q_gen = app.analyze_paper_quality(math, s, mode="teacher", subject="general")
+    q_thy = app.analyze_paper_quality(math, s, mode="teacher", subject="theory")
+    assert q_thy["dimensions"]["method"]["score"] > q_gen["dimensions"]["method"]["score"]
+
+
+def test_structure_detects_experimental_method_heading():
+    """实验型论文的「实验方法」标题应被识别为方法章节（此前只认「方法」）。"""
+    txt = ("摘要：本文制备了某涂层并测试性能。\n"
+           "2 实验方法\n采用溶胶凝胶法制备样品，用扫描电镜表征形貌，测量膜厚与附着力，并做极化曲线测试耐蚀性。\n"
+           "3 结果与讨论\n涂层致密，耐蚀性显著提升。\n")
+    s = app.extract_sections(txt)
+    assert s.get("method"), "「实验方法」章节未被识别为方法段"

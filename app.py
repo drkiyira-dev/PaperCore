@@ -337,10 +337,14 @@ def extract_sections(text):
     # ── 研究方法 ───────────────────────────────────────────────────────────
     v = _grab(text, [
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:研究方法|本文方法|所提方法|资料与方法|材料与方法|对象与方法|方\s*法)[ \t]*[\n：:]([\s\S]{30,})',
+        # 实验型论文（材料/化学/生物）方法段常叫「实验方法/实验部分/样品制备」等，不叫「方法」
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:实验\s*方法|试验\s*方法|实验部分|实验设计|实验过程|实验步骤|实验材料|样品制备|材料制备|制备\s*(?:工艺|方法|与表征))[ \t]*[\n：:]([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:提案手法|提案法|提案する手法|手\s*法|システム構成|問題設定|準備)[ \t]*[\n：:]([\s\S]{30,})',  # 日本語
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:제안\s*(?:방법|기법)|연구\s*방법|방\s*법|접근법|시스템\s*구성|문제\s*정의)[ \t]*[\n：:]([\s\S]{30,})',  # 한국어
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Methodik|Methoden|Methode|Vorgeschlagene\s+\w+|Ansatz|Systemmodell|Problemstellung|Vorgehensweise)[ \t]*[\n：:]([\s\S]{30,})',  # Deutsch
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:Method(?:ology)?|Approach|Algorithm)[ \t]*\n([\s\S]{30,})',
+        # 英文实验型论文：Materials and Methods / Experimental Section 等（≠ 结果段 Experiments/Results）
+        r'(?:^|\n)[ \t]*' + _NUM + r'(?:Materials?\s+and\s+Methods?|Experimental\s+(?:Section|Details|Setup|Procedures?|Methods?|Methodology|Techniques?)|Sample\s+Preparation|Synthesis(?:\s+and\s+Characterization)?)[ \t]*[\n：:]([\s\S]{30,})',
         # IEEE/工科英文论文的方法章节常不叫 Method，而是 System Model / Problem Formulation / Proposed … 等
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:(?:System|Signal|Channel|Network)\s+(?:Model|Architecture)|Problem\s+(?:Formulation|Statement|Definition)|Proposed\s+[A-Za-z][\w\- ]{0,40}|Preliminaries|Design\s+of\s+\w+)[ \t]*\n([\s\S]{30,})',
         r'(?:^|\n)[ \t]*' + _NUM + r'(?:技术方案|系统设计|实现方案|系统模型|问题建模|算法设计)[ \t]*[\n：:]([\s\S]{30,})',
@@ -1129,6 +1133,139 @@ SUBJECT_RUBRICS = {
             ],
         },
     },
+    # 数学/纯理论：定理-证明结构，无数据集/实验/表征。批量诊断中 6 篇数学论文在实证型档只 1~2/4。
+    "theory": {
+        "label": "数学 / 理论",
+        "categories": {
+            "问题建模与假设": [
+                "问题建模", "假设", "前提", "定义", "记号", "设定", "模型",
+                "框架", "猜想", "公理", "命题",
+                "problem formulation", "assumption", "definition", "notation",
+                "setting", "framework", "conjecture", "axiom", "hypothesis",
+                "model",
+            ],
+            "定理与证明": [
+                "定理", "引理", "推论", "命题", "证明", "反证", "归纳", "构造",
+                "充分", "必要", "充要", "性质", "证毕",
+                "theorem", "lemma", "corollary", "proposition", "proof",
+                "contradiction", "induction", "sufficient", "necessary",
+                "property", "qed",
+            ],
+            "算法与复杂度": [
+                "算法", "复杂度", "时间复杂度", "空间复杂度", "最优", "近似",
+                "上界", "下界", "界", "多项式", "np", "可解", "归约",
+                "algorithm", "complexity", "time complexity", "space complexity",
+                "optimal", "approximation", "upper bound", "lower bound",
+                "polynomial", "np-hard", "reduction",
+            ],
+            "收敛性与分析": [
+                "收敛", "收敛性", "稳定性", "存在性", "唯一性", "有界", "连续",
+                "极限", "渐近", "误差", "估计", "不等式", "范数", "测度",
+                "convergence", "stability", "existence", "uniqueness", "bounded",
+                "continuous", "limit", "asymptotic", "error", "estimate",
+                "inequality", "norm", "measure",
+            ],
+        },
+    },
+    # 电子/电气 EE：批量诊断中 OFDM/波束成形/功率传输/MIMO 等靠 cs/eng 蒙到 3/4，缺专属档。
+    "electronics": {
+        "label": "电子 / 电气",
+        "categories": {
+            "电路与器件": [
+                "电路", "放大器", "滤波器", "晶体管", "集成电路", "芯片", "器件",
+                "阻抗", "电容", "电感", "半导体", "电压", "电流",
+                "circuit", "amplifier", "filter", "transistor",
+                "integrated circuit", "chip", "impedance", "capacitor",
+                "inductor", "voltage",
+            ],
+            "信号处理": [
+                "信号处理", "采样", "频谱", "傅里叶", "滤波", "调制", "解调",
+                "频域", "时域", "信噪比", "卷积",
+                "signal processing", "sampling", "spectrum", "fourier",
+                "modulation", "demodulation", "frequency domain", "snr",
+                "convolution",
+            ],
+            "通信系统": [
+                "通信", "信道", "信道估计", "编码", "波束成形", "天线", "mimo",
+                "ofdm", "误码率", "吞吐", "频率复用", "多址", "衰落",
+                "communication", "channel", "channel estimation", "coding",
+                "beamforming", "antenna", "bit error rate", "throughput",
+                "fading",
+            ],
+            "电力与控制": [
+                "功率", "电源", "变换器", "逆变", "整流", "控制", "反馈",
+                "稳压", "效率", "传递函数", "谐振",
+                "power", "converter", "inverter", "rectifier", "control",
+                "feedback", "transfer function", "efficiency", "regulation",
+                "resonant",
+            ],
+        },
+    },
+    # 土木/建筑：批量诊断中 抗震结构/混凝土损伤 靠 general 兜底、engineering 只 3/4。
+    "civil": {
+        "label": "土木 / 建筑",
+        "categories": {
+            "结构分析": [
+                "结构", "荷载", "应力", "应变", "承载力", "变形", "挠度",
+                "有限元", "内力", "弯矩", "剪力",
+                "structural", "load", "stress", "strain", "bearing capacity",
+                "deformation", "deflection", "finite element", "bending moment",
+                "shear",
+            ],
+            "材料与构件": [
+                "混凝土", "钢筋", "钢结构", "梁", "柱", "板", "节点", "配筋",
+                "强度等级", "预应力", "砌体",
+                "concrete", "reinforcement", "steel", "beam", "column", "slab",
+                "joint", "prestressed", "masonry",
+            ],
+            "抗震与动力": [
+                "抗震", "地震", "地震动", "反应谱", "时程分析", "振动", "阻尼",
+                "位移", "延性", "隔震",
+                "seismic", "earthquake", "ground motion", "response spectrum",
+                "time history", "vibration", "damping", "displacement",
+                "ductility",
+            ],
+            "岩土与施工": [
+                "岩土", "地基", "基础", "土体", "边坡", "隧道", "桥梁", "施工",
+                "沉降", "渗流", "支护",
+                "geotechnical", "foundation", "soil", "slope", "tunnel",
+                "bridge", "construction", "settlement", "seepage",
+            ],
+        },
+    },
+    # 生物（非临床）：批量诊断中 系统生物物理/基因表达 medical 只 1/4，缺分子/细胞档。
+    "biology": {
+        "label": "生物 / 生命科学",
+        "categories": {
+            "实验与技术": [
+                "pcr", "测序", "电泳", "免疫印迹", "western", "转染", "敲除",
+                "敲低", "克隆", "培养", "染色", "流式",
+                "sequencing", "electrophoresis", "western blot", "transfection",
+                "knockout", "knockdown", "cloning", "culture", "staining",
+                "flow cytometry", "crispr",
+            ],
+            "分子与细胞": [
+                "基因", "表达", "蛋白", "酶", "通路", "信号通路", "细胞",
+                "受体", "转录", "翻译", "突变", "结合",
+                "gene", "expression", "protein", "enzyme", "pathway", "cell",
+                "receptor", "transcription", "translation", "mutation",
+                "binding",
+            ],
+            "样本与统计分析": [
+                "样本", "对照", "处理组", "表型", "生物信息", "差异表达",
+                "富集分析", "显著差异", "重复",
+                "sample", "control", "phenotype", "bioinformatics",
+                "differential expression", "enrichment", "replicate",
+            ],
+            "模型与机制": [
+                "模型", "动物模型", "体外", "体内", "机制", "调控", "表观遗传",
+                "代谢", "稳态", "进化",
+                "animal model", "in vitro", "in vivo", "mechanism",
+                "regulation", "epigenetic", "metabolism", "homeostasis",
+                "evolution",
+            ],
+        },
+    },
     "social": {
         "label": "社科 / 经管 / 人文",
         "categories": {
@@ -1154,8 +1291,13 @@ SUBJECT_RUBRICS = {
             ],
             "分析方法": [
                 "内容分析", "话语分析", "主题分析", "扎根理论", "民族志", "编码",
+                # 管理/运营增量（供应链/运营/决策/仿真）
+                "运营管理", "供应链", "库存管理", "决策分析", "仿真建模",
+                "案例分析", "流程优化",
                 "content analysis", "discourse analysis", "thematic analysis",
                 "grounded theory", "ethnography", "coding",
+                "operations management", "supply chain", "inventory",
+                "decision analysis", "simulation", "process optimization",
                 "内容分析", "談話分析", "グラウンデッドセオリー", "主題分析",
                 "내용 분석", "담화 분석", "근거 이론", "주제 분석",
                 "inhaltsanalyse", "diskursanalyse", "grounded theory",
@@ -1165,10 +1307,15 @@ SUBJECT_RUBRICS = {
                 # 社科/经管计量增量（计量经济/面板/工具变量/双重差分/结构方程等）
                 "计量经济", "面板数据", "时间序列", "工具变量", "固定效应",
                 "双重差分", "断点回归", "中介效应", "调节效应", "结构方程",
+                # 运筹/管理科学增量（优化/规划/博弈/排队）
+                "运筹", "优化", "线性规划", "整数规划", "博弈论", "排队论",
+                "启发式", "鲁棒优化",
                 "econometric", "panel data", "time series", "instrumental variable",
                 "fixed effects", "difference-in-differences",
                 "regression discontinuity", "mediation", "moderation",
                 "structural equation",
+                "operations research", "optimization", "linear programming",
+                "game theory", "queueing", "heuristic",
                 "計量経済", "パネルデータ", "操作変数", "固定効果", "構造方程式",
                 "계량 경제", "패널 데이터", "도구 변수", "고정 효과", "구조 방정식",
                 "ökonometrie", "paneldaten", "instrumentvariable", "feste effekte",
