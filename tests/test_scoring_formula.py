@@ -57,3 +57,21 @@ def test_professor_stricter_than_teacher():
     qt = _method(BROAD, "cs", "teacher")
     qp = _method(BROAD, "cs", "professor")
     assert qp["total"] <= qt["total"]
+
+
+def test_depth_layer_active():
+    """两层方法维度：覆盖相同环节数时，方法词更丰富的深度分更高（锁住扁平词库确实在用，防再次孤立）。"""
+    # 两篇都只覆盖「模型与架构」这一个 CS 环节，但一篇方法词多、一篇几乎没有
+    thin = "2 方法：我们用了一个模型。"
+    rich = ("2 方法：我们用了模型、网络、架构、卷积、注意力、编码器、解码器、嵌入、"
+            "模块、神经网络、transformer 等多种结构。")
+    q_thin = app.analyze_paper_quality(thin, {}, mode="teacher", subject="cs")
+    q_rich = app.analyze_paper_quality(rich, {}, mode="teacher", subject="cs")
+    assert q_rich["dimensions"]["method"]["score"] > q_thin["dimensions"]["method"]["score"]
+
+
+def test_weak_paper_not_inflated():
+    """弱论文（方法几乎空）方法维度应明显偏低，跨学科词库不应把它抬高。"""
+    weak = "摘要：本文做了一项研究。\n2 方法：我们分析了数据。\n5 结论：有一些发现。"
+    q = app.analyze_paper_quality(weak, app.extract_sections(weak), mode="teacher", subject="general")
+    assert q["dimensions"]["method"]["score"] <= 12

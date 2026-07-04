@@ -909,7 +909,11 @@ SCORE_PROFILES = {
 }
 
 # 各档「饱和率」：命中深度→分数走凹曲线 1-(1-rate)^n，杜绝堆词顶格（越严的档 rate 越低，要更多命中才给分）
+# _SAT_RATE 用于创新维度（命中数少，rate 高，几处即接近满）
 _SAT_RATE = {"teacher": 0.55, "expert": 0.46, "professor": 0.38}
+# _SAT_RATE_DEPTH 用于方法「深度分」：扁平词库词多，rate 刻意低 → 需十几个词才接近满，
+# 让「方法表达丰富度」保留真实区分度（弱论文低、扎实的才高），避免上千词把所有论文都抬满。
+_SAT_RATE_DEPTH = {"teacher": 0.20, "expert": 0.17, "professor": 0.14}
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1294,30 +1298,32 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85, subjec
         "suggestions": data_suggestions,
     }
 
-    # ── 维度4：方法描述完整性（满分 25）──────────────────────────────────
-    # 学科自适应：按用户手选 subject 取该学科的「方法学功能类别」。
-    #   覆盖(coverage 0.6)＝命中了几个方法学环节（广度）；深度(depth 0.4)＝跨环节去重命中数走饱和。
-    #   → 只堆某一类词 coverage 上不去、顶不满，必须跨环节才高分；直接治「堆词判高、写烂判对」。
+    # ── 维度4：方法描述完整性（满分 25）· 两层 ───────────────────────────
+    #   覆盖分(0.6)＝学科 4 个方法学环节命中几个 → 研究流程「结构完整性」（防堆一类词）
+    #   深度分(0.4)＝扁平方法词库(中英日韩德+跨学科)去重命中 → 「方法表达丰富度」，走慢饱和防堆词刷分
+    #   两层结合：环节负责结构、扁平词负责丰富度，既防堆词又不浪费词库。
     rubric = SUBJECT_RUBRICS.get(subject, SUBJECT_RUBRICS["general"])
     cats = rubric["categories"]
     method_text = text
     m_low = method_text.lower()
+
+    # 覆盖分：学科方法学环节（用户手选 subject 决定用哪套）
     covered = 0
-    all_hits = set()          # 跨类别去重的字面命中（用于深度）
     cat_detail = []
     for cname, kws in cats.items():
-        hits = [k for k in kws if k.lower() in m_low]
-        if hits:
+        if any(k.lower() in m_low for k in kws):
             covered += 1
             cat_detail.append(cname)
-            all_hits.update(h.lower() for h in hits)
-    # 语义兜底：对该学科全部类别词做一次语义补充（模型不可用则为 0），并进深度
-    _pool = [k for kws in cats.values() for k in kws]
-    sem_method = semantic.extra_hits(method_text, _pool, list(all_hits))
-    depth_hits = len(all_hits) + sem_method
     ncats = max(1, len(cats))
     coverage = covered / ncats
-    depth = _saturate(depth_hits, _SAT_RATE.get(mode, 0.5))
+
+    # 深度分：扁平方法词库（各语言 + 跨学科，按档取 + 去重），慢饱和曲线
+    method_kw = list(dict.fromkeys(prof["method_kw"]))
+    m_hits = [kw for kw in method_kw if kw.lower() in m_low]
+    sem_method = semantic.extra_hits(method_text, method_kw, m_hits)  # C6 语义命中（模型不可用则为 0）
+    depth_hits = len(m_hits) + sem_method
+    depth = _saturate(depth_hits, _SAT_RATE_DEPTH.get(mode, 0.2))
+
     method_ratio = 0.6 * coverage + 0.4 * depth
     method_score = round(25 * method_ratio)
     method_suggestions = []
@@ -1330,7 +1336,7 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85, subjec
         method_suggestions.append("方法描述较简略，建议补充：研究设计/关键步骤/评估方式等具体内容")
     method_detail = (f"覆盖 {covered}/{ncats} 个方法学环节"
                      + (f"（{'、'.join(cat_detail)}）" if cat_detail else "")
-                     + f"；命中 {len(all_hits)} 词" + (f"（+{sem_method} 处语义相近）" if sem_method else ""))
+                     + f"；方法词命中 {len(m_hits)}" + (f"（+{sem_method} 处语义相近）" if sem_method else ""))
 
     result["dimensions"]["method"] = {
         "score": method_score, "max": 25,
