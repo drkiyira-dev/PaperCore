@@ -223,6 +223,12 @@
                     <p class="subject-hint">按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。</p>
                 </div>
 
+                <!-- 去水印开关：默认已自动去跨页重复（页眉页脚/水印）；勾选则更激进清理 -->
+                <label class="watermark-toggle">
+                    <input type="checkbox" id="watermarkInput">
+                    <span>此 PDF 带水印（勾选后更用力去水印/页眉页脚，默认已自动去重复内容）</span>
+                </label>
+
                 <!-- 开始分析 -->
                 <button class="btn-start" id="btnStart">开始分析</button>
                 <div class="error-message" id="errorMessage" style="display:none"></div>

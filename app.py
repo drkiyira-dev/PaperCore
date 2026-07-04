@@ -1747,6 +1747,39 @@ def _text_quality_ok(text, min_ratio=0.6):
     return (good / total) >= min_ratio
 
 
+def _strip_repeated_lines(text, aggressive=False):
+    """去掉跨页重复的版面家具：水印 / 页眉页脚 / 期刊名 / DOI。
+    频率法（不依赖页边界）：同一行文本在全文重复够多次、且够短，即视为家具删掉。
+    aggressive（用户勾选「此 PDF 带水印」）：阈值更松 + 命中常见水印关键词(下载/preprint/http…)也删。
+    安全阀：要删的行超过非空行 30% 时判为误伤，放弃清理、原样返回。"""
+    if not text or '\n' not in text:
+        return text
+    from collections import Counter
+    lines = text.split('\n')
+    freq = Counter(ln.strip() for ln in lines if ln.strip())
+    min_rep = 3 if aggressive else 4
+    max_len = 140 if aggressive else 60
+    wm_kw = ('下载', 'download', '预印本', 'preprint', '版权所有', 'copyright',
+             'http', 'doi:', '知网', 'cnki', 'chinaxiv', 'arxiv.org')
+
+    def furniture(s):
+        if not s:
+            return False
+        c = freq.get(s, 0)
+        if c >= min_rep and len(s) <= max_len:
+            return True
+        if aggressive and c >= 2 and any(k in s.lower() for k in wm_kw):
+            return True
+        return False
+
+    kept = [ln for ln in lines if not furniture(ln.strip())]
+    nonempty = sum(1 for ln in lines if ln.strip())
+    removed = nonempty - sum(1 for ln in kept if ln.strip())
+    if nonempty and removed > nonempty * 0.30:
+        return text   # 删太多，判误伤，放弃
+    return '\n'.join(kept)
+
+
 def _page_text_reading_order(page):
     """pdfplumber 单页文本抽取（直接用稳定的 extract_text）。
 
@@ -1802,11 +1835,13 @@ def _reflow_text(text):
     return '\n'.join(out)
 
 
-def extract_text(file_path):
+def extract_text(file_path, aggressive_watermark=False):
     """
     使用多种方式提取PDF/文档文本，提高解析成功率
     优先级：docling（文字层结构化）> pdfplumber > PyPDF2 > 本地 OCR（扫描件兜底）
     每一步都过文本质量闸，乱码（如 docling 对中文扫描件的 OCR 噪声）会被跳过。
+    所有 PDF 抽取结果都过一遍 _strip_repeated_lines：默认去跨页重复家具（水印/页眉脚）；
+    aggressive_watermark（前端「此 PDF 带水印」勾选）时更激进清理。
     """
     text = ""
     # 只取文件名的扩展名：用 splitext 而非对全路径 rsplit('.')，
@@ -1820,7 +1855,7 @@ def extract_text(file_path):
             text = result.document.export_to_text()
             if text and text.strip() and _text_quality_ok(text):
                 print(f"[docling] 解析成功，文本长度：{len(text)}")
-                return text
+                return _strip_repeated_lines(text, aggressive_watermark)
             elif text and text.strip():
                 print("[docling] 输出疑似乱码，跳过并尝试下游方式")
         except Exception as e:
@@ -1839,7 +1874,7 @@ def extract_text(file_path):
             text = _reflow_text(text)
             if text and text.strip() and _text_quality_ok(text):
                 print(f"[pdfplumber] 解析成功，文本长度：{len(text)}")
-                return text
+                return _strip_repeated_lines(text, aggressive_watermark)
             elif text and text.strip():
                 print("[pdfplumber] 输出疑似乱码（坏字体/水印层），跳过并尝试下游方式")
         except Exception as e:
@@ -1858,7 +1893,7 @@ def extract_text(file_path):
             text = _reflow_text(text)
             if text and text.strip() and _text_quality_ok(text):
                 print(f"[PyPDF2] 解析成功，文本长度：{len(text)}")
-                return text
+                return _strip_repeated_lines(text, aggressive_watermark)
             elif text and text.strip():
                 print("[PyPDF2] 输出疑似乱码（坏字体/水印层），跳过并尝试 OCR")
         except Exception as e:
@@ -1873,7 +1908,7 @@ def extract_text(file_path):
             text = _reflow_text(ocr_pdf(file_path))
             if text and text.strip():
                 print(f"[OCR] 兜底解析成功，文本长度：{len(text)}")
-                return text
+                return _strip_repeated_lines(text, aggressive_watermark)
         except Exception as e:
             print(f"[OCR] 兜底解析失败：{e}")
 
@@ -2454,8 +2489,9 @@ def _analyze_and_respond(path, display_filename):
             resp.set_cookie('pc_vid', vid, max_age=15552000, httponly=True, samesite='Lax')
             return resp, 429
 
-    # 解析文本
-    text = extract_text(path)
+    # 解析文本（watermark 勾选 → 更激进去水印/页眉脚）
+    _wm = request.form.get('watermark', '').strip().lower() in ('1', 'true', 'on', 'yes')
+    text = extract_text(path, aggressive_watermark=_wm)
 
     if not text.strip():
         return jsonify({"code": 400, "msg": "解析出的文本为空，请检查文件内容"}), 400

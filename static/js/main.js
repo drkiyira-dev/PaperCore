@@ -330,6 +330,7 @@ function startAnalysis() {
     if (selectedScore === 'teacher' && teacherCapSlider) formData.append('teacher_cap', teacherCapSlider.value);
     const subjectSelect = document.getElementById('subjectSelect');
     if (subjectSelect) formData.append('subject', subjectSelect.value);
+    if (document.getElementById('watermarkInput')?.checked) formData.append('watermark', '1');
     if (useV4Pro) formData.append('use_v4pro', '1');
     if (apiKey) formData.append('api_key', apiKey);
     if (useLocalAi) formData.append('use_local_ai', '1');
