@@ -1725,6 +1725,11 @@ def _text_quality_ok(text, min_ratio=0.6):
     """
     if not text or not text.strip():
         return False
+    # 坏字体（无 ToUnicode 映射的 CID 字体）会被 pdfplumber/PyPDF2 渲染成大量 "(cid:12)" 记号，
+    # 这些记号全是 ASCII 词字符，会骗过下面的占比统计（误判为正常文字）→ 先单独识别并否决。
+    n_cid = text.count("(cid:")
+    if n_cid and n_cid * 8 > len(text) * 0.15:
+        return False
     good = 0
     total = 0
     for ch in text:
@@ -1822,23 +1827,28 @@ def extract_text(file_path):
             print(f"[docling] 解析失败：{e}")
 
     # 方式2: pdfplumber（备选，PDF专用）
+    # 每步用独立 text 累加（reset），避免上一步的乱码残留被 += 拼进来；输出同样过质量闸。
     if file_ext == 'pdf':
         try:
+            text = ""
             with pdfplumber.open(file_path) as pdf:
                 for page in pdf.pages:
                     page_text = _page_text_reading_order(page)
                     if page_text:
                         text += page_text + '\n'
             text = _reflow_text(text)
-            if text and text.strip():
+            if text and text.strip() and _text_quality_ok(text):
                 print(f"[pdfplumber] 解析成功，文本长度：{len(text)}")
                 return text
+            elif text and text.strip():
+                print("[pdfplumber] 输出疑似乱码（坏字体/水印层），跳过并尝试下游方式")
         except Exception as e:
             print(f"[pdfplumber] 解析失败：{e}")
 
     # 方式3: PyPDF2（备选，兼容性最好）
     if file_ext == 'pdf':
         try:
+            text = ""
             with open(file_path, 'rb') as f:
                 reader = PyPDF2.PdfReader(f)
                 for page in reader.pages:
@@ -1846,18 +1856,20 @@ def extract_text(file_path):
                     if page_text:
                         text += page_text + '\n'
             text = _reflow_text(text)
-            if text and text.strip():
+            if text and text.strip() and _text_quality_ok(text):
                 print(f"[PyPDF2] 解析成功，文本长度：{len(text)}")
                 return text
+            elif text and text.strip():
+                print("[PyPDF2] 输出疑似乱码（坏字体/水印层），跳过并尝试 OCR")
         except Exception as e:
             print(f"[PyPDF2] 解析失败：{e}")
 
-    # 方式4: 本地 OCR 兜底（扫描件 / 无文字层 PDF）
-    # 只有当前面所有文字层抽取都拿不到文本时才触发——正常文字版 PDF 不会走到这里，
-    # 故对常规论文零额外开销；OCR 较慢，作为最后一道防线保证扫描件也能解析。
+    # 方式4: 本地 OCR 兜底（扫描件 / 无文字层 / 坏字体乱码 PDF）
+    # 触发条件：前面所有文字层抽取都拿不到文本或输出乱码（未过质量闸）——正常文字版 PDF
+    # 不会走到这里，故对常规论文零额外开销；OCR 较慢，作为最后一道防线保证也能解析。
     if file_ext == 'pdf' and OCR_OK:
         try:
-            print("[OCR] 文字层抽取为空，尝试本地 OCR 兜底...")
+            print("[OCR] 文字层抽取为空或乱码，尝试本地 OCR 兜底...")
             text = _reflow_text(ocr_pdf(file_path))
             if text and text.strip():
                 print(f"[OCR] 兜底解析成功，文本长度：{len(text)}")
