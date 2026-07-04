@@ -90,6 +90,7 @@
     '计算机 / 人工智能': { en: 'Computer Science / AI', ja: '計算機 / 人工知能' },
     '医学 / 生命科学': { en: 'Medicine / Life Sciences', ja: '医学 / 生命科学' },
     '工程 / 物理 / 材料': { en: 'Engineering / Physics / Materials', ja: '工学 / 物理 / 材料' },
+    '材料 / 化学': { en: 'Materials / Chemistry', ja: '材料 / 化学' },
     '社科 / 经管 / 人文': { en: 'Social Sciences / Business / Humanities', ja: '社会科学 / 経営 / 人文' },
     '按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。': {
         en: 'Scores "method completeness" by subject — pick the right one for accuracy; with a large keyword base this prevents keyword-stuffing from inflating scores.',

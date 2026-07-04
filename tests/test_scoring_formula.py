@@ -75,3 +75,25 @@ def test_weak_paper_not_inflated():
     weak = "摘要：本文做了一项研究。\n2 方法：我们分析了数据。\n5 结论：有一些发现。"
     q = app.analyze_paper_quality(weak, app.extract_sections(weak), mode="teacher", subject="general")
     assert q["dimensions"]["method"]["score"] <= 12
+
+
+# 材料/化学论文：实验型材料论文的方法结构（制备+表征+性能+机理）≠ 机械/控制。
+MAT = ("摘要：本文制备了铝合金表面的钛锆转化膜并研究其耐蚀性能。\n"
+       "2 方法：采用溶胶凝胶法制备转化膜，热处理后用扫描电镜（SEM）与能谱（EDS）表征表面形貌与元素分布，"
+       "X射线衍射（XRD）分析晶体结构；用极化曲线与电化学阻抗（EIS）评估耐蚀性，测量腐蚀电流与腐蚀电位，"
+       "并做盐雾试验；测定膜厚与附着力；分析了成膜机理与微观结构。\n"
+       "5 结论：转化膜致密均匀，显著提升了耐蚀性，腐蚀电流降低一个数量级，具有工程应用价值。")
+
+
+def test_materials_subject_fits_better_than_engineering():
+    """材料论文在 materials 档应显著高于误用 engineering 档（engineering 的建模/控制环节材料论文命不中）。"""
+    s = app.extract_sections(MAT)
+    q_eng = app.analyze_paper_quality(MAT, s, mode="teacher", teacher_cap=85, subject="engineering")
+    q_mat = app.analyze_paper_quality(MAT, s, mode="teacher", teacher_cap=85, subject="materials")
+    assert q_mat["dimensions"]["method"]["score"] > q_eng["dimensions"]["method"]["score"]
+    assert "4/4" in q_mat["dimensions"]["method"]["detail"]
+
+
+def test_materials_is_valid_subject():
+    assert "materials" in app.SUBJECT_RUBRICS
+    assert len(app.SUBJECT_RUBRICS["materials"]["categories"]) == 4

@@ -1071,6 +1071,64 @@ SUBJECT_RUBRICS = {
             ],
         },
     },
+    # 材料/化学：从 engineering 拆出（实验型材料论文的方法结构≠机械/控制，样本 202303.10524 验证）。
+    # 中英足量；日韩德暂不造（母语校对成本，用户手上多为中文材料论文）。
+    "materials": {
+        "label": "材料 / 化学",
+        "categories": {
+            "制备与合成工艺": [
+                "制备", "合成", "溶胶凝胶", "溶胶-凝胶", "沉积", "电沉积", "化学沉积",
+                "磁控溅射", "溅射", "镀膜", "涂层", "转化膜", "薄膜", "热处理", "退火",
+                "淬火", "烧结", "熔炼", "铸造", "水热", "前驱体", "配比", "反应条件",
+                "工艺参数", "成膜",
+                "preparation", "synthesis", "sol-gel", "deposition",
+                "electrodeposition", "sputtering", "magnetron sputtering",
+                "coating", "conversion coating", "thin film", "heat treatment",
+                "annealing", "quenching", "sintering", "casting", "hydrothermal",
+                "precursor", "process parameter",
+            ],
+            "表征与测量": [
+                "扫描电镜", "扫描电子显微镜", "sem", "透射电镜", "tem", "能谱",
+                "能谱分析", "eds", "edx", "x射线衍射", "xrd", "光电子能谱", "xps",
+                "拉曼", "拉曼光谱", "红外光谱", "傅里叶", "ftir", "原子力显微镜",
+                "afm", "接触角", "极化曲线", "动电位极化", "电化学阻抗", "阻抗谱",
+                "eis", "塔菲尔", "tafel", "循环伏安", "表征", "显微镜", "光谱",
+                "衍射", "元素分析",
+                "scanning electron microscopy", "transmission electron microscopy",
+                "energy dispersive spectroscopy", "x-ray diffraction",
+                "x-ray photoelectron spectroscopy", "raman", "raman spectroscopy",
+                "infrared spectroscopy", "atomic force microscopy", "contact angle",
+                "polarization curve", "potentiodynamic", "electrochemical impedance",
+                "impedance spectroscopy", "cyclic voltammetry", "characterization",
+                "microscopy", "spectroscopy", "diffraction",
+            ],
+            "性能测试": [
+                "耐蚀性", "耐腐蚀性", "腐蚀速率", "腐蚀电流", "腐蚀电位",
+                "自腐蚀电位", "极化电阻", "盐雾试验", "中性盐雾", "膜厚", "附着力",
+                "结合力", "硬度", "显微硬度", "耐磨", "磨损", "摩擦系数",
+                "拉伸强度", "屈服强度", "断裂", "韧性", "弹性模量", "疲劳",
+                "热稳定性", "抗氧化", "导电率", "电导率",
+                "corrosion resistance", "corrosion rate", "corrosion current",
+                "corrosion potential", "polarization resistance", "salt spray",
+                "film thickness", "adhesion", "hardness", "microhardness", "wear",
+                "friction coefficient", "tensile strength", "yield strength",
+                "fracture", "toughness", "elastic modulus", "fatigue",
+                "thermal stability", "oxidation resistance", "conductivity",
+            ],
+            "微观结构与机理": [
+                "微观结构", "微观形貌", "表面形貌", "晶粒", "晶粒尺寸", "晶界",
+                "相组成", "物相", "晶体结构", "界面", "成膜机理", "腐蚀机理",
+                "反应机理", "生长机理", "择优取向", "缺陷", "孔隙", "致密",
+                "均匀性", "元素分布", "化学组成", "价态", "机理",
+                "microstructure", "morphology", "surface morphology", "grain",
+                "grain size", "grain boundary", "phase composition",
+                "crystal structure", "interface", "formation mechanism",
+                "corrosion mechanism", "reaction mechanism", "growth mechanism",
+                "defect", "porosity", "dense", "uniformity",
+                "elemental distribution", "chemical composition", "mechanism",
+            ],
+        },
+    },
     "social": {
         "label": "社科 / 经管 / 人文",
         "categories": {
@@ -1320,8 +1378,10 @@ def analyze_paper_quality(text, sections, mode='teacher', teacher_cap=85, subjec
     ncats = max(1, len(cats))
     coverage = covered / ncats
 
-    # 深度分：扁平方法词库（各语言 + 跨学科，按档取 + 去重），慢饱和曲线
-    method_kw = list(dict.fromkeys(prof["method_kw"]))
+    # 深度分：池子 = 扁平方法词库（各语言+跨学科·按档）+ 当前学科自己的类别词，去重后慢饱和。
+    # 加本学科类别词是为了让 materials 等"扁平库覆盖不到"的学科，深度层也能起来（不然只修覆盖分没用）。
+    _subj_words = [k for kws in cats.values() for k in kws]
+    method_kw = list(dict.fromkeys(prof["method_kw"] + _subj_words))
     m_hits = [kw for kw in method_kw if kw.lower() in m_low]
     sem_method = semantic.extra_hits(method_text, method_kw, m_hits)  # C6 语义命中（模型不可用则为 0）
     depth_hits = len(m_hits) + sem_method
