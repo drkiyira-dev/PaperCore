@@ -95,9 +95,9 @@
     '土木 / 建筑': { en: 'Civil / Architecture', ja: '土木 / 建築' },
     '生物 / 生命科学': { en: 'Biology / Life Sciences', ja: '生物 / 生命科学' },
     '数学 / 理论': { en: 'Mathematics / Theory', ja: '数学 / 理論' },
-    '此 PDF 带水印（勾选后更用力去水印/页眉页脚，默认已自动去重复内容）': {
-        en: 'This PDF has a watermark (check for stronger watermark/header-footer removal; repeated content is auto-stripped by default)',
-        ja: 'この PDF には透かしがある（チェックで透かし/ヘッダー・フッターをより強力に除去。既定でも繰り返し要素は自動除去）' },
+    '这篇 PDF 带水印吗？': { en: 'Does this PDF have a watermark?', ja: 'この PDF に透かしはありますか？' },
+    '正常分析': { en: 'Normal analysis', ja: '通常の分析' },
+    '带水印 · 加强去除': { en: 'Has watermark · stronger removal', ja: '透かしあり · 強力に除去' },
     '社科 / 经管 / 人文': { en: 'Social Sciences / Business / Humanities', ja: '社会科学 / 経営 / 人文' },
     '按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。': {
         en: 'Scores "method completeness" by subject — pick the right one for accuracy; with a large keyword base this prevents keyword-stuffing from inflating scores.',

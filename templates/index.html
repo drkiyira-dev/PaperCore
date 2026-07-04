@@ -223,11 +223,6 @@
                     <p class="subject-hint">按论文学科评「方法完整性」，选对更准；词库上千后靠这个避免「堆词判高」。</p>
                 </div>
 
-                <!-- 去水印开关：默认已自动去跨页重复（页眉页脚/水印）；勾选则更激进清理 -->
-                <label class="watermark-toggle">
-                    <input type="checkbox" id="watermarkInput">
-                    <span>此 PDF 带水印（勾选后更用力去水印/页眉页脚，默认已自动去重复内容）</span>
-                </label>
 
                 <!-- 开始分析 -->
                 <button class="btn-start" id="btnStart">开始分析</button>
@@ -459,6 +454,23 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/main.js') }}?v=15"></script>
+<!-- 开始分析前 · 水印询问弹窗（默认已自动去跨页重复；带水印时更激进清理） -->
+<div id="watermarkModal" class="exp-mask" style="display:none">
+    <div class="exp-modal">
+        <button class="wm-modal-x" id="wmClose" aria-label="关闭">×</button>
+        <div class="exp-modal-icon">💧</div>
+        <h3 class="exp-modal-title">这篇 PDF 带水印吗？</h3>
+        <p class="exp-modal-body">
+            系统<b>默认已自动去掉页眉页脚等跨页重复内容</b>。<br>
+            如果这篇 PDF 有<b>下载水印 / 数据库印记</b>，选「带水印」会更用力清理，让分析更准。
+        </p>
+        <div class="wm-modal-btns">
+            <button id="wmNormalBtn" class="exp-btn-primary">正常分析</button>
+            <button id="wmWatermarkBtn" class="exp-btn-outline">带水印 · 加强去除</button>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}?v=16"></script>
 </body>
 </html>

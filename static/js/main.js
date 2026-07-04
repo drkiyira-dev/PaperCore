@@ -306,7 +306,34 @@ function appendLog(container, text, type) {
 
 // === Start Analysis ===
 const btnStart = document.getElementById('btnStart');
-if (btnStart) btnStart.addEventListener('click', startAnalysis);
+if (btnStart) btnStart.addEventListener('click', openWatermarkModal);
+
+// 「开始分析」→ 先弹「是否带水印」，选完再真正分析。pendingWatermark 记住这次选择。
+let pendingWatermark = false;
+function openWatermarkModal() {
+    if (!selectedFile && !preloadedDoc) {
+        showError('请先上传一篇论文文件');
+        return;
+    }
+    hideError();
+    const m = document.getElementById('watermarkModal');
+    if (!m) { pendingWatermark = false; startAnalysis(); return; }   // 兜底：无弹窗直接分析
+    m.style.display = 'flex';
+}
+function closeWatermarkModal() {
+    const m = document.getElementById('watermarkModal');
+    if (m) m.style.display = 'none';
+}
+document.getElementById('wmNormalBtn')?.addEventListener('click', () => {
+    pendingWatermark = false; closeWatermarkModal(); startAnalysis();
+});
+document.getElementById('wmWatermarkBtn')?.addEventListener('click', () => {
+    pendingWatermark = true; closeWatermarkModal(); startAnalysis();
+});
+document.getElementById('wmClose')?.addEventListener('click', closeWatermarkModal);
+document.getElementById('watermarkModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'watermarkModal') closeWatermarkModal();   // 点遮罩空白处关闭
+});
 
 function startAnalysis() {
     if (!selectedFile && !preloadedDoc) {
@@ -330,7 +357,7 @@ function startAnalysis() {
     if (selectedScore === 'teacher' && teacherCapSlider) formData.append('teacher_cap', teacherCapSlider.value);
     const subjectSelect = document.getElementById('subjectSelect');
     if (subjectSelect) formData.append('subject', subjectSelect.value);
-    if (document.getElementById('watermarkInput')?.checked) formData.append('watermark', '1');
+    if (pendingWatermark) formData.append('watermark', '1');
     if (useV4Pro) formData.append('use_v4pro', '1');
     if (apiKey) formData.append('api_key', apiKey);
     if (useLocalAi) formData.append('use_local_ai', '1');
