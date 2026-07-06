@@ -1,0 +1,15 @@
+# PaperCore 微调环境依赖。建议单独建一个 venv，别和主 app 的 venv 混用。
+#   python -m venv .venv && source .venv/bin/activate
+#   pip install -r requirements.txt
+#
+# 版本用 >= 给一个下限；下面注释里是我实测能跑通的组合，遇到不兼容就照它钉版本。
+
+torch>=2.2            # 实测 2.4；Apple 芯片直接 pip 装即可（自带 MPS）
+transformers>=4.44    # 实测 4.44
+peft>=0.11            # 实测 0.12
+accelerate>=0.31      # 实测 0.33
+datasets>=2.19        # 实测 2.20
+sentencepiece>=0.2    # 部分 tokenizer 需要
+
+# ——仅 CUDA 上做 4bit QLoRA 时才需要，Mac/MPS 装不了也用不上——
+# bitsandbytes>=0.43

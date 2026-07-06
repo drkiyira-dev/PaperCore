@@ -1,0 +1,9 @@
+# 训练产出的 adapter / checkpoint（也被仓库根 .gitignore 覆盖，这里再显式一次）
+outputs/
+# 你自己的训练数据（可能含版权论文全文，绝不入库）
+data/*.jsonl
+# 虚拟环境与缓存
+.venv/
+__pycache__/
+*.pyc
+.DS_Store

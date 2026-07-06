@@ -1,0 +1,10 @@
+{"instruction": "识别该段落所属章节，只输出章节名（摘要/引言/相关工作/方法/实验/结论 之一）。", "input": "本文提出一种基于出现频率的行级去重方法，在文本抽取前剔除页眉、页脚与水印等跨页重复内容，从而提升后续结构识别的准确率。", "output": "方法"}
+{"instruction": "识别该段落所属章节，只输出章节名（摘要/引言/相关工作/方法/实验/结论 之一）。", "input": "Prior work on document layout analysis largely relies on visual features, while our setting emphasizes offline, privacy-preserving text pipelines that run fully on a local machine.", "output": "相关工作"}
+{"instruction": "用一句话概括这段论文的核心方法。", "input": "We introduce a frequency-based line stripping module that removes cross-page repeated furniture such as headers, footers and watermarks before text extraction.", "output": "核心方法：在文本抽取前，用基于出现频率的行级去重模块剔除页眉、页脚、水印等跨页重复内容。"}
+{"instruction": "提取本段使用的关键技术，用逗号分隔。", "input": "The scoring module combines a rule-based keyword library with a MiniLM semantic similarity layer, and calibrates the final score via a saturation curve.", "output": "规则关键词词库, MiniLM 语义相似度, 饱和曲线校准"}
+{"instruction": "从实验部分提取：数据集、评价指标、主要结果，用 JSON 输出。", "input": "We evaluate on 240 PDF papers. Extraction F1 reaches 0.87, a 6-point gain over the pdfplumber baseline (0.81).", "output": "{\"数据集\": \"240 篇 PDF 论文\", \"评价指标\": \"抽取 F1\", \"主要结果\": \"F1=0.87，较 pdfplumber 基线(0.81)提升 6 个百分点\"}"}
+{"instruction": "从实验部分提取：数据集、评价指标、主要结果，用 JSON 输出。", "input": "在 320 篇中文论文上进行评测，章节识别准确率达到 0.91，较正则基线(0.83)提升 8 个百分点。", "output": "{\"数据集\": \"320 篇中文论文\", \"评价指标\": \"章节识别准确率\", \"主要结果\": \"准确率=0.91，较正则基线(0.83)提升 8 个百分点\"}"}
+{"instruction": "总结这篇论文的结论，不超过两句话。", "input": "In this paper we presented a local-first paper analysis pipeline that performs structure recognition and information extraction offline. Future work will extend to formula and figure understanding.", "output": "本文提出一种本地优先的论文分析流水线，可离线完成结构识别与信息抽取；未来将扩展到公式与图表理解。"}
+{"instruction": "总结这篇论文的结论，不超过两句话。", "input": "实验表明，加入跨页去重与语义校准后，弱论文与强论文的评分区分度显著提升，且全流程无需联网。", "output": "加入跨页去重与语义校准后，强弱论文的评分区分度明显提升，且整个流程可完全离线运行。"}
+{"instruction": "判断下面这句话是否属于「核心方法」句，只回答 是 或 否。", "input": "为验证有效性，我们在四个公开数据集上与五个基线方法进行了对比。", "output": "否"}
+{"instruction": "判断下面这句话是否属于「核心方法」句，只回答 是 或 否。", "input": "我们设计了一个双阶段抽取器：先用规则定位章节边界，再用轻量语义模型对边界句做校准。", "output": "是"}
