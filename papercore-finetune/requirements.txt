@@ -2,14 +2,17 @@
 #   python -m venv .venv && source .venv/bin/activate
 #   pip install -r requirements.txt
 #
-# 版本用 >= 给一个下限；下面注释里是我实测能跑通的组合，遇到不兼容就照它钉版本。
+# 版本用 >= 给一个下限；注释是实测能跑通的组合。Apple MPS 上**两套都实测过**：
+# transformers 4.44（初版）和 5.13（新版——apply_chat_template 返回值变了，format_utils 已兼容两版）。
 
-torch>=2.2            # 实测 2.4；Apple 芯片直接 pip 装即可（自带 MPS）
-transformers>=4.44    # 实测 4.44
-peft>=0.11            # 实测 0.12
-accelerate>=0.31      # 实测 0.33
-datasets>=2.19        # 实测 2.20
+torch>=2.2            # 实测 2.4 与 2.13；Apple 芯片直接 pip 装即可（自带 MPS）
+transformers>=4.44    # 实测 4.44 与 5.13（format_utils 兼容两版 chat 模板返回值）
+peft>=0.11            # 实测 0.12 与 0.19
+accelerate>=0.31      # 实测 0.33 与 1.14
+datasets>=2.19        # 实测 2.20 与 5.0
 sentencepiece>=0.2    # 部分 tokenizer 需要
 
+# ——可选：国内网络从 ModelScope 拉底模（HF 卡住时用），见 README「底模下载」——
+# modelscope
 # ——仅 CUDA 上做 4bit QLoRA 时才需要，Mac/MPS 装不了也用不上——
 # bitsandbytes>=0.43

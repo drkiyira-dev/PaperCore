@@ -27,11 +27,22 @@ def build_messages(instruction, user_input="", system=SYSTEM_PROMPT):
 
 
 def build_prompt_ids(tokenizer, instruction, user_input=""):
-    """只到「该模型开始回答」为止的 token（不含答案），用于训练时给答案打 mask。"""
+    """只到「该模型开始回答」为止的 token（不含答案），用于训练时给答案打 mask。
+
+    兼容不同 transformers 版本：4.x 的 apply_chat_template(tokenize=True) 直接返回
+    List[int]；5.x 起默认返回 BatchEncoding/dict（甚至嵌一层 batch）。统一取成 List[int]。
+    """
     messages = build_messages(instruction, user_input)
-    return tokenizer.apply_chat_template(
+    out = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=True
     )
+    if hasattr(out, "input_ids"):          # BatchEncoding
+        out = out.input_ids
+    elif isinstance(out, dict):            # 普通 dict
+        out = out["input_ids"]
+    if out and isinstance(out[0], (list, tuple)):   # 去掉 batch 维 [[...]] -> [...]
+        out = out[0]
+    return list(out)
 
 
 def tokenize_example(example, tokenizer, max_len=1024):

@@ -38,6 +38,27 @@ pip install -r requirements.txt
 
 **样本量建议**：先攒 300~1000 条高质量样本试水；四类任务尽量均衡。样本质量 > 数量。
 
+### 2.1 用 PaperCore 自有资产一键生成（合规·推荐）
+
+不想手写？`src/build_dataset.py` 把 PaperCore **自己的资产**转成训练集，每条标签都来自
+**合规来源**，绝不蒸馏闭源大模型（拿 GPT/Claude 等的输出当标签通常违反其服务条款）：
+
+| 合规来源 | 内容 | 产出任务 |
+| --- | --- | --- |
+| 人工金标准 `../eval/gold/*.json` | 人手抄的核心方法 / 贡献句 | 方法句判定(是/否)、核心方法句抽取 |
+| 自研规则引擎 `../rules.py`（28 条确定性正则） | keep/review 动作 + 章节归类 | 章节识别、（可选 `--denoise`）降噪判断 |
+| 自撰合成 `examples/sample.jsonl` | 手写抽取式样例 | 一句话概括、实验信息 JSON、结论摘要 |
+
+```bash
+# 用主项目的 venv 跑（脚本要 import 主项目 rules.py）。仅金标准，快而纯净：
+../venv/bin/python src/build_dataset.py
+# 额外用真实 PDF 富集（规则引擎弱标注章节/方法句，de-wrap+句末标点过滤碎句）：
+../venv/bin/python src/build_dataset.py --papers ../eval/papers --max-papers 30
+```
+
+产出 `data/train.jsonl` + `data/val.jsonl` 并打印类别分布。实测一版：约 460 条、5 类任务，
+`是/否` 与 `方法·实验·引言·结论` 基本均衡（`data/` 默认不进 git）。
+
 ## 3. 训练
 
 先用样例跑通：
@@ -60,6 +81,15 @@ python src/train.py --data data/train.jsonl --output outputs/papercore-lora
 | **Apple 芯片 (MPS)** | 直接跑，用 fp32（稳）。1.5B 可训；内存吃紧就换 `--model Qwen/Qwen2.5-0.5B-Instruct` |
 | **CUDA** | 优先 bf16；显存小可加 `--load-4bit`（需 `pip install bitsandbytes`）做 QLoRA |
 | **CPU** | 能跑但慢，仅建议 0.5B + 小数据验证流程 |
+
+**底模下载**：`--model Qwen/Qwen2.5-0.5B-Instruct` 首次会从 HuggingFace 拉底模（约 1 GB）。
+国内网络若 HF 卡住/超时，用 **ModelScope**（魔搭，同样是 Qwen 官方权重、国内 CDN 快）：
+
+```bash
+pip install modelscope
+python -c "from modelscope import snapshot_download; print(snapshot_download('Qwen/Qwen2.5-0.5B-Instruct'))"
+# 把打印出的本地路径当 --model 传给 train.py（本地目录 = 离线加载，无需再联网）
+```
 
 ## 4. 推理测试
 
@@ -116,6 +146,7 @@ papercore-finetune/
 ├── examples/sample.jsonl     # 自撰合成样例，可直接跑
 ├── data/                     # 你的私有数据（不进 git）
 └── src/
+    ├── build_dataset.py      # 金标准+规则引擎 → 合规 JSONL（train/val）
     ├── format_utils.py       # 提示词模板 + tokenizer（训练/推理共用）
     ├── train.py              # 读数据 → LoRA → Trainer → 保存
     └── infer.py              # 加载 base+adapter 推理测试
