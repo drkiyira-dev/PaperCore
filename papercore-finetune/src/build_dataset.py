@@ -62,13 +62,17 @@ SECTION_OF = {
     "conclusion_extract": "结论",
     "limitation_future": "结论",
 }
-# 方法家族：这些 keep 规则视为「核心方法/贡献」，可作方法句判定的正类线索
+# 方法家族：这些 keep 规则视为「核心方法/贡献」，作方法句判定的正类（是）。
+# 注意：definition_notation 不在此列——定义/符号不是"贡献"。2026-07-10 错误分析显示，
+# 把定义标成"是"会让模型在数学/理论句上乱判"是"（如 "Recall N is defined"）。
 METHOD_FAMILY = {"method_extract", "system_architecture", "algorithm_extract",
-                 "innovation_extract", "definition_notation"}
-# 非方法但显著：作方法句判定的负类（是重点句，但不是"核心方法"）
+                 "innovation_extract"}
+# 非方法但显著：作方法句判定的负类（否）。后三个是数学/理论"机关"——技术味重但不是
+# 核心贡献（定义、定理/证明/假设、公式），明确标"否"来治过判。
 NONMETHOD_SALIENT = {"experiment_setup", "experiment_result", "performance_gain",
                      "metric_indicator", "figure_table_ref", "comparison_baseline",
-                     "problem_motivation"}
+                     "problem_motivation",
+                     "definition_notation", "theorem_proof", "formula_extract"}
 
 # 预编译规则（保留 name/action/pattern）
 _COMPILED = []
@@ -215,7 +219,7 @@ def extract_pdf_text(path, max_pages=12):
         return ""
 
 
-def from_papers(papers_dir, rows, max_papers, per_paper=60, denoise=False):
+def from_papers(papers_dir, rows, max_papers, per_paper=60, denoise=False, exclude=None):
     """对真实 PDF 跑规则引擎，富集 章节 与 方法句判定 两类样本（弱标签，合规）。
 
     降噪(核心/可精简)任务默认**不**产出：英文 arXiv 语料极少触发 review/填充规则，
@@ -225,7 +229,9 @@ def from_papers(papers_dir, rows, max_papers, per_paper=60, denoise=False):
     if not _COMPILED:
         print("[papers] 规则未加载，跳过 PDF 富集。")
         return
-    pdfs = sorted(glob.glob(os.path.join(papers_dir, "*.pdf")))[:max_papers]
+    exclude = exclude or set()
+    pdfs = [p for p in sorted(glob.glob(os.path.join(papers_dir, "*.pdf")))
+            if os.path.basename(p) not in exclude][:max_papers]
     if not pdfs:
         print(f"[warn] {papers_dir} 下没有 PDF。")
         return
@@ -339,6 +345,8 @@ def main():
     ap.add_argument("--max-papers", type=int, default=25)
     ap.add_argument("--denoise", action="store_true",
                     help="额外产出降噪(核心/可精简)任务；英文语料填充类不足，默认关闭")
+    ap.add_argument("--exclude-papers", default="",
+                    help="逗号分隔的 PDF 文件名，从 --papers 富集中排除（用来留出测试集论文，防泄漏）")
     ap.add_argument("--cap-per-class", type=int, default=90, help="每个(指令,答案)类别上限，防失衡")
     ap.add_argument("--val-ratio", type=float, default=0.1)
     ap.add_argument("--split", choices=["paper", "row"], default="paper",
@@ -351,7 +359,8 @@ def main():
     rows = []
     from_gold(args.gold, rows)
     if args.papers:
-        from_papers(args.papers, rows, args.max_papers, denoise=args.denoise)
+        exclude = {p.strip() for p in args.exclude_papers.split(",") if p.strip()}
+        from_papers(args.papers, rows, args.max_papers, denoise=args.denoise, exclude=exclude)
     from_synthetic(rows)
 
     rows = dedup(rows)
