@@ -156,6 +156,8 @@ def from_gold(gold_dir, rows):
             d = json.load(open(f, encoding="utf-8"))
         except Exception:
             continue
+        pid = os.path.basename(f)
+        start = len(rows)                       # 记录本篇产出的起止，便于按论文打标
         core = [norm(s) for s in d.get("gold_core_sentences", []) if norm(s)]
         cands = [norm(s) for s in find_candidate_list(d) if is_sentence_like(s)]
         core_set = set(core)
@@ -186,6 +188,8 @@ def from_gold(gold_dir, rows):
             name, action = match_rule(s)
             if action == "keep" and name in SECTION_OF:
                 rows.append({"instruction": I_SECTION, "input": s, "output": SECTION_OF[name]}); n_sec += 1
+        for r in rows[start:]:
+            r["_paper"] = pid                   # 标注这些行来自哪篇论文
     print(f"[gold] 方法句正类 {n_core} / 负类 {n_neg} / 抽取 {n_pick} / 章节 {n_sec}")
 
 
@@ -230,6 +234,7 @@ def from_papers(papers_dir, rows, max_papers, per_paper=60, denoise=False):
         text = extract_pdf_text(path)
         if not text:
             continue
+        start = len(rows)
         seen = set()
         kept = 0
         for s in split_sentences(text):
@@ -253,6 +258,8 @@ def from_papers(papers_dir, rows, max_papers, per_paper=60, denoise=False):
                 kept += 1
             if kept >= per_paper:
                 break
+        for r in rows[start:]:
+            r["_paper"] = os.path.basename(path)
     msg = f"[papers] {len(pdfs)} 篇 → 章节 {n_sec} / 方法句 是{n_pos}·否{n_neg}"
     if denoise:
         msg += f" / 降噪 核心{n_keep}·可精简{n_cut}"
@@ -268,7 +275,7 @@ def from_synthetic(rows):
     for line in open(p, encoding="utf-8"):
         line = line.strip()
         if line:
-            rows.append(json.loads(line)); n += 1
+            rows.append({**json.loads(line), "_paper": "_synthetic"}); n += 1
     print(f"[synthetic] 自撰样例 {n} 条")
 
 
@@ -295,6 +302,27 @@ def cap_per_class(rows, cap):
     return out
 
 
+def split_by_paper(rows, val_ratio, seed):
+    """按论文切分：val 里的论文整篇留出，其句子绝不出现在 train，杜绝信息泄漏。
+
+    合成样例(_paper='_synthetic')始终进 train。返回 (train, val, val_papers)。
+    """
+    from collections import defaultdict
+    by = defaultdict(list)
+    for r in rows:
+        by[r.get("_paper", "_synthetic")].append(r)
+    papers = [p for p in by if p != "_synthetic"]
+    random.Random(seed).shuffle(papers)
+    target = int(len(rows) * val_ratio)
+    val, val_papers = [], set()
+    for p in papers:
+        if len(val) >= target:
+            break
+        val.extend(by[p]); val_papers.add(p)
+    train = [r for p in by if p not in val_papers for r in by[p]]
+    return train, val, val_papers
+
+
 def summarize(rows):
     from collections import Counter
     c = Counter((r["instruction"][:14] + "…", r["output"] if len(r["output"]) < 6 else "＜长答案＞")
@@ -313,6 +341,8 @@ def main():
                     help="额外产出降噪(核心/可精简)任务；英文语料填充类不足，默认关闭")
     ap.add_argument("--cap-per-class", type=int, default=90, help="每个(指令,答案)类别上限，防失衡")
     ap.add_argument("--val-ratio", type=float, default=0.1)
+    ap.add_argument("--split", choices=["paper", "row"], default="paper",
+                    help="paper=按论文整篇留出(无泄漏,推荐)；row=按行随机(同篇会泄漏,数字虚高)")
     ap.add_argument("--out-dir", default=os.path.join(FINETUNE_ROOT, "data"))
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
@@ -326,19 +356,26 @@ def main():
 
     rows = dedup(rows)
     rows = cap_per_class(rows, args.cap_per_class)
-    random.shuffle(rows)
 
     os.makedirs(args.out_dir, exist_ok=True)
-    n_val = max(1, int(len(rows) * args.val_ratio))
-    val, train = rows[:n_val], rows[n_val:]
+    if args.split == "paper":
+        train, val, val_papers = split_by_paper(rows, args.val_ratio, args.seed)
+        print(f"[split] 按论文留出 {len(val_papers)} 篇作 val（无泄漏，推荐）")
+    else:
+        random.shuffle(rows)
+        n_val = max(1, int(len(rows) * args.val_ratio))
+        val, train = rows[:n_val], rows[n_val:]
+        print("[split] ⚠️ 按行随机切分：同一篇论文的句子可能同时进 train/val（泄漏，数字虚高）")
+
     for name, part in (("train", train), ("val", val)):
         path = os.path.join(args.out_dir, f"{name}.jsonl")
         with open(path, "w", encoding="utf-8") as fo:
             for r in part:
+                r = {k: v for k, v in r.items() if k != "_paper"}   # 落盘前去掉内部字段
                 fo.write(json.dumps(r, ensure_ascii=False) + "\n")
         print(f"[write] {path}  ({len(part)} 条)")
     summarize(train)
-    print(f"\n[done] 合计 {len(rows)} 条（train {len(train)} / val {len(val)}）。"
+    print(f"\n[done] 合计 {len(train) + len(val)} 条（train {len(train)} / val {len(val)}）。"
           f"\n       合规：仅人工金标准 + 自研规则引擎 + 自撰合成，无任何闭源模型输出。")
 
 
